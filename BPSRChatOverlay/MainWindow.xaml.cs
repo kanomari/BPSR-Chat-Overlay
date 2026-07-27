@@ -35,6 +35,10 @@ public partial class MainWindow : Window
 
             var appConfig = ConfigManager.Load();
 
+            ChatListBox.FontSize = Math.Clamp(appConfig.FontSize, 8, 48);
+            Opacity = Math.Clamp(appConfig.Opacity, 0.2, 1.0);
+            Topmost = appConfig.TopMost;
+
             var netCapConfig = new NetCapConfig
             {
                 ExeNames = appConfig.ExeNames.ToArray(),
