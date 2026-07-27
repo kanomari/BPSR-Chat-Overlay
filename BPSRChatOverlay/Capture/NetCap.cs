@@ -75,29 +75,9 @@ public class NetCap
         Log.Information("Capture device started");
     }
 
-    public void RegisterUnhandledHandler(Action<NotifyId, ReadOnlySpan<byte>, ExtraPacketData> handler)
-    {
-        UnhandledHandler = handler;
-    }
-
-    public void RegisterUnhandledProxyHandler(Action<ProxyId, ReadOnlySpan<byte>, ExtraPacketData> handler)
-    {
-        UnhandledProxyHandler = handler;
-    }
-
     public void RegisterNotifyHandler(ulong serviceId, uint methodId, Action<ReadOnlySpan<byte>, ExtraPacketData> handler)
     {
         NotifyHandlers.Add(new NotifyId(serviceId, methodId), handler);
-    }
-
-    public void RegisterProxyHandler(uint serviceId, uint methodId, Action<ReadOnlySpan<byte>, uint, ExtraPacketData> handler)
-    {
-        ProxyHandlers.Add(new ProxyId(serviceId, methodId), handler);
-    }
-
-    public void RegisterProxyReturnHandler(uint serviceId, uint methodId, Action<ReadOnlySpan<byte>, uint, ExtraPacketData> handler)
-    {
-        ProxyReturnHandlers.Add(new ProxyId(serviceId, methodId), handler);
     }
 
     private void DeviceOnOnPacketArrival(object sender, PacketCapture e)
