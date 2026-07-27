@@ -4,14 +4,18 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Media3D;
 using System.Windows.Threading;
 using BPSRChatOverlay.Config;
 using BPSRChatOverlay.Managers;
 using BPSRChatOverlay.Models;
 using BPSRChatOverlay.UIResources;
 using BPSR_ZDPSLib;
+using Serilog;
 
 namespace BPSRChatOverlay;
 
@@ -24,7 +28,6 @@ public partial class MainWindow : Window
     private const int WmHotKey = 0x0312;
     private const int HtLeft = 10;
     private const int HtRight = 11;
-    private const int HtTop = 12;
     private const int HtTopLeft = 13;
     private const int HtTopRight = 14;
     private const int HtBottom = 15;
@@ -41,6 +44,7 @@ public partial class MainWindow : Window
 
     private readonly NetCap _netCap = new();
     private readonly List<ChatMessage> _chatHistory = [];
+    private readonly HashSet<int> _reportedUnknownChannelTypes = [];
     private readonly MentionSoundPlayer _mentionSoundPlayer = new();
     private readonly DispatcherTimer _statusTimer;
     private readonly DispatcherTimer _windowPlacementSaveTimer;
@@ -147,18 +151,19 @@ public partial class MainWindow : Window
             config.ChannelChatTextColor,
             config.PartyChatTextColor,
             config.GuildChatTextColor,
+            config.NewbieChatTextColor,
             config.ChatBackgroundColor,
             config.MenuBackgroundColor,
             config.MentionHighlightColor);
         ChatListBox.FontSize = Math.Clamp(config.FontSize, 8, 48);
         ChatBackgroundBorder.Background = ChatColors.ChatBackground;
-        ChatBackgroundBorder.Opacity =
+        Resources["ChatBackgroundOpacity"] =
             Math.Clamp(config.BackgroundOpacity, 0.0, 1.0);
+        Resources["WindowDecorationOpacity"] =
+            Math.Clamp(config.MenuBackgroundOpacity, 0.0, 1.0);
         Resources["ChatTextOpacity"] =
             Math.Clamp(config.TextOpacity, 0.0, 1.0);
         MenuBackgroundBorder.Background = ChatColors.MenuBackground;
-        MenuBackgroundBorder.Opacity =
-            Math.Clamp(config.MenuBackgroundOpacity, 0.0, 1.0);
         DebugPanel.Visibility = config.ShowDebugPanel
             ? Visibility.Visible
             : Visibility.Collapsed;
@@ -196,14 +201,17 @@ public partial class MainWindow : Window
         }
     }
 
-    private void MenuDragArea_MouseLeftButtonDown(
+    private void TitleBarRoot_PreviewMouseLeftButtonDown(
         object sender,
         MouseButtonEventArgs e)
     {
-        if (e.ChangedButton != MouseButton.Left)
+        if (e.ChangedButton != MouseButton.Left ||
+            IsInsideButton(e.OriginalSource as DependencyObject))
         {
             return;
         }
+
+        e.Handled = true;
 
         try
         {
@@ -213,6 +221,29 @@ public partial class MainWindow : Window
         {
             // マウスボタンが既に離された場合は移動を中止します。
         }
+    }
+
+    private static bool IsInsideButton(DependencyObject? source)
+    {
+        DependencyObject? current = source;
+
+        while (current is not null)
+        {
+            if (current is Button)
+            {
+                return true;
+            }
+
+            current = current switch
+            {
+                Visual or Visual3D => VisualTreeHelper.GetParent(current),
+                FrameworkContentElement contentElement =>
+                    contentElement.Parent,
+                _ => LogicalTreeHelper.GetParent(current)
+            };
+        }
+
+        return false;
     }
 
     private void ExitButton_Click(object sender, RoutedEventArgs e)
@@ -325,11 +356,6 @@ public partial class MainWindow : Window
         if (isRight)
         {
             return HtRight;
-        }
-
-        if (isTop)
-        {
-            return HtTop;
         }
 
         return isBottom ? HtBottom : 0;
@@ -536,6 +562,7 @@ public partial class MainWindow : Window
          */
         Dispatcher.BeginInvoke(() =>
         {
+            LogUnknownChannelType(message.ChannelType);
             message.IsMention = IsMentionMessage(message);
             _chatHistory.Add(message);
 
@@ -581,10 +608,35 @@ public partial class MainWindow : Window
                 _appConfig.ShowPartyChat,
             (int)Zproto.ChitChatChannelType.ChannelUnion =>
                 _appConfig.ShowGuildChat,
+            (int)Zproto.ChitChatChannelType.ChannelNewbie =>
+                _appConfig.ShowNewbieChat,
             _ => true
         };
 
         return matchesChannelFilter && MatchesKeywordFilter(message);
+    }
+
+    private void LogUnknownChannelType(int channelType)
+    {
+        if (IsKnownChatChannelType(channelType) ||
+            !_reportedUnknownChannelTypes.Add(channelType))
+        {
+            return;
+        }
+
+        Log.Warning(
+            "Unknown chat channel type received: {ChannelType}",
+            channelType);
+    }
+
+    private static bool IsKnownChatChannelType(int channelType)
+    {
+        return channelType is
+            (int)Zproto.ChitChatChannelType.ChannelWorld or
+            (int)Zproto.ChitChatChannelType.ChannelScene or
+            (int)Zproto.ChitChatChannelType.ChannelTeam or
+            (int)Zproto.ChitChatChannelType.ChannelUnion or
+            (int)Zproto.ChitChatChannelType.ChannelNewbie;
     }
 
     private bool MatchesKeywordFilter(ChatMessage message)

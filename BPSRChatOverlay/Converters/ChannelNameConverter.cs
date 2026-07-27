@@ -18,11 +18,12 @@ public sealed class ChannelNameConverter : IValueConverter
 
         return channelType switch
         {
-            1 => "ワールド",
-            2 => "チャンネル",
-            3 => "パーティ",
-            4 => "ギルド",
-            _ => $"不明({channelType})"
+            1 => "W",
+            2 => "Ch",
+            3 => "P",
+            4 => "G",
+            9 => "N",
+            _ => "?"
         };
     }
 

@@ -6,17 +6,39 @@ namespace BPSRChatOverlay.UIResources;
 public static class ChatColors
 {
     public const string DefaultChatTextColor = "#FFFFFFFF";
+    public const string DefaultWorldChatTextColor = "#FFBA55D3";
+    public const string DefaultChannelChatTextColor = "#FFFFFFFF";
+    public const string DefaultPartyChatTextColor = "#FF00BFFF";
+    public const string DefaultGuildChatTextColor = "#FF9ACD32";
+    public const string DefaultNewbieChatTextColor = "#FF808080";
     public const string DefaultChatBackgroundColor = "#FF000000";
     public const string DefaultMenuBackgroundColor = "#FFF2F2F2";
     public const string DefaultMentionHighlightColor = "#60FFD54F";
 
-    public static Brush World { get; private set; } = Brushes.White;
+    public static Brush World { get; private set; } =
+        CreateBrush(
+            DefaultWorldChatTextColor,
+            DefaultWorldChatTextColor);
 
-    public static Brush Channel { get; private set; } = Brushes.White;
+    public static Brush Channel { get; private set; } =
+        CreateBrush(
+            DefaultChannelChatTextColor,
+            DefaultChannelChatTextColor);
 
-    public static Brush Party { get; private set; } = Brushes.White;
+    public static Brush Party { get; private set; } =
+        CreateBrush(
+            DefaultPartyChatTextColor,
+            DefaultPartyChatTextColor);
 
-    public static Brush Guild { get; private set; } = Brushes.White;
+    public static Brush Guild { get; private set; } =
+        CreateBrush(
+            DefaultGuildChatTextColor,
+            DefaultGuildChatTextColor);
+
+    public static Brush Newbie { get; private set; } =
+        CreateBrush(
+            DefaultNewbieChatTextColor,
+            DefaultNewbieChatTextColor);
 
     public static Brush Unknown { get; } = Brushes.White;
 
@@ -35,14 +57,26 @@ public static class ChatColors
         string? channelTextColor,
         string? partyTextColor,
         string? guildTextColor,
+        string? newbieTextColor,
         string? chatBackgroundColor,
         string? menuBackgroundColor,
         string? mentionHighlightColor)
     {
-        World = CreateBrush(worldTextColor, DefaultChatTextColor);
-        Channel = CreateBrush(channelTextColor, DefaultChatTextColor);
-        Party = CreateBrush(partyTextColor, DefaultChatTextColor);
-        Guild = CreateBrush(guildTextColor, DefaultChatTextColor);
+        World = CreateBrush(
+            worldTextColor,
+            DefaultWorldChatTextColor);
+        Channel = CreateBrush(
+            channelTextColor,
+            DefaultChannelChatTextColor);
+        Party = CreateBrush(
+            partyTextColor,
+            DefaultPartyChatTextColor);
+        Guild = CreateBrush(
+            guildTextColor,
+            DefaultGuildChatTextColor);
+        Newbie = CreateBrush(
+            newbieTextColor,
+            DefaultNewbieChatTextColor);
         ChatBackground = CreateBrush(
             chatBackgroundColor,
             DefaultChatBackgroundColor);

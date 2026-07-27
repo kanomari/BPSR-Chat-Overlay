@@ -16,7 +16,7 @@ public sealed class AppConfig
         "Star"
     ];
 
-    public int FontSize { get; set; } = 16;
+    public int FontSize { get; set; } = 15;
 
     public double BackgroundOpacity { get; set; } = 0.7;
 
@@ -42,15 +42,19 @@ public sealed class AppConfig
 
     public bool ShowGuildChat { get; set; } = true;
 
+    public bool ShowNewbieChat { get; set; } = true;
+
     public string ChatFilterKeywords { get; set; } = string.Empty;
 
-    public string WorldChatTextColor { get; set; } = "#FFFFFFFF";
+    public string WorldChatTextColor { get; set; } = "#FFBA55D3";
 
     public string ChannelChatTextColor { get; set; } = "#FFFFFFFF";
 
-    public string PartyChatTextColor { get; set; } = "#FFFFFFFF";
+    public string PartyChatTextColor { get; set; } = "#FF00BFFF";
 
-    public string GuildChatTextColor { get; set; } = "#FFFFFFFF";
+    public string GuildChatTextColor { get; set; } = "#FF9ACD32";
+
+    public string NewbieChatTextColor { get; set; } = "#FF808080";
 
     public string ChatBackgroundColor { get; set; } = "#FF000000";
 

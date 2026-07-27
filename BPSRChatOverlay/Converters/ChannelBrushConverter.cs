@@ -37,6 +37,7 @@ public sealed class ChannelBrushConverter : IValueConverter
             4 => useConfiguredChatTextColor
                 ? ChatColors.Guild
                 : System.Windows.Media.Brushes.YellowGreen,
+            9 => ChatColors.Newbie,
             _ => useConfiguredChatTextColor
                 ? ChatColors.Unknown
                 : System.Windows.Media.Brushes.Gray

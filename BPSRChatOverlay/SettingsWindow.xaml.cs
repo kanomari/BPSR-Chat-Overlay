@@ -21,6 +21,7 @@ public partial class SettingsWindow : Window
     private string _channelChatTextColor;
     private string _partyChatTextColor;
     private string _guildChatTextColor;
+    private string _newbieChatTextColor;
     private string _chatBackgroundColor;
     private string _menuBackgroundColor;
     private string _mentionHighlightColor;
@@ -36,16 +37,19 @@ public partial class SettingsWindow : Window
         LoadCaptureDevices(currentConfig.CaptureDeviceName, true);
         _worldChatTextColor = NormalizeColorText(
             currentConfig.WorldChatTextColor,
-            ChatColors.DefaultChatTextColor);
+            ChatColors.DefaultWorldChatTextColor);
         _channelChatTextColor = NormalizeColorText(
             currentConfig.ChannelChatTextColor,
-            ChatColors.DefaultChatTextColor);
+            ChatColors.DefaultChannelChatTextColor);
         _partyChatTextColor = NormalizeColorText(
             currentConfig.PartyChatTextColor,
-            ChatColors.DefaultChatTextColor);
+            ChatColors.DefaultPartyChatTextColor);
         _guildChatTextColor = NormalizeColorText(
             currentConfig.GuildChatTextColor,
-            ChatColors.DefaultChatTextColor);
+            ChatColors.DefaultGuildChatTextColor);
+        _newbieChatTextColor = NormalizeColorText(
+            currentConfig.NewbieChatTextColor,
+            ChatColors.DefaultNewbieChatTextColor);
         _chatBackgroundColor = NormalizeColorText(
             currentConfig.ChatBackgroundColor,
             ChatColors.DefaultChatBackgroundColor);
@@ -71,6 +75,7 @@ public partial class SettingsWindow : Window
         ShowChannelChatCheckBox.IsChecked = currentConfig.ShowChannelChat;
         ShowPartyChatCheckBox.IsChecked = currentConfig.ShowPartyChat;
         ShowGuildChatCheckBox.IsChecked = currentConfig.ShowGuildChat;
+        ShowNewbieChatCheckBox.IsChecked = currentConfig.ShowNewbieChat;
         ChatFilterKeywordsTextBox.Text = currentConfig.ChatFilterKeywords;
         EnableMentionNotificationCheckBox.IsChecked =
             currentConfig.EnableMentionNotification;
@@ -216,11 +221,13 @@ public partial class SettingsWindow : Window
             ShowChannelChat = ShowChannelChatCheckBox.IsChecked == true,
             ShowPartyChat = ShowPartyChatCheckBox.IsChecked == true,
             ShowGuildChat = ShowGuildChatCheckBox.IsChecked == true,
+            ShowNewbieChat = ShowNewbieChatCheckBox.IsChecked == true,
             ChatFilterKeywords = ChatFilterKeywordsTextBox.Text.Trim(),
             WorldChatTextColor = _worldChatTextColor,
             ChannelChatTextColor = _channelChatTextColor,
             PartyChatTextColor = _partyChatTextColor,
             GuildChatTextColor = _guildChatTextColor,
+            NewbieChatTextColor = _newbieChatTextColor,
             ChatBackgroundColor = _chatBackgroundColor,
             MenuBackgroundColor = _menuBackgroundColor,
             EnableMentionNotification =
@@ -462,6 +469,7 @@ public partial class SettingsWindow : Window
             nameof(AppConfig.ChannelChatTextColor) => _channelChatTextColor,
             nameof(AppConfig.PartyChatTextColor) => _partyChatTextColor,
             nameof(AppConfig.GuildChatTextColor) => _guildChatTextColor,
+            nameof(AppConfig.NewbieChatTextColor) => _newbieChatTextColor,
             nameof(AppConfig.ChatBackgroundColor) => _chatBackgroundColor,
             nameof(AppConfig.MenuBackgroundColor) => _menuBackgroundColor,
             nameof(AppConfig.MentionHighlightColor) =>
@@ -486,6 +494,9 @@ public partial class SettingsWindow : Window
             case nameof(AppConfig.GuildChatTextColor):
                 _guildChatTextColor = colorText;
                 break;
+            case nameof(AppConfig.NewbieChatTextColor):
+                _newbieChatTextColor = colorText;
+                break;
             case nameof(AppConfig.ChatBackgroundColor):
                 _chatBackgroundColor = colorText;
                 break;
@@ -504,6 +515,7 @@ public partial class SettingsWindow : Window
         SetPreviewColor(ChannelChatTextColorPreview, _channelChatTextColor);
         SetPreviewColor(PartyChatTextColorPreview, _partyChatTextColor);
         SetPreviewColor(GuildChatTextColorPreview, _guildChatTextColor);
+        SetPreviewColor(NewbieChatTextColorPreview, _newbieChatTextColor);
         SetPreviewColor(ChatBackgroundColorPreview, _chatBackgroundColor);
         SetPreviewColor(MenuBackgroundColorPreview, _menuBackgroundColor);
         SetPreviewColor(
