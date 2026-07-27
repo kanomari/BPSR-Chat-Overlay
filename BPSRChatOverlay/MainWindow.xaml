@@ -19,11 +19,18 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <TextBlock
-            Text="BPSR Chat Overlay 通信確認"
-            FontSize="24"
-            FontWeight="Bold"
-            Margin="0,0,0,16"/>
+        <DockPanel Margin="0,0,0,16">
+            <Button
+                DockPanel.Dock="Right"
+                Content="設定"
+                Width="70"
+                Click="SettingsButton_Click"/>
+
+            <TextBlock
+                Text="BPSR Chat Overlay 通信確認"
+                FontSize="24"
+                FontWeight="Bold"/>
+        </DockPanel>
 
         <Border
             Grid.Row="1"

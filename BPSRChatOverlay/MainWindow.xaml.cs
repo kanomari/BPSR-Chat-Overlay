@@ -16,6 +16,7 @@ public partial class MainWindow : Window
 
     private readonly NetCap _netCap = new();
     private readonly DispatcherTimer _statusTimer;
+    private AppConfig _appConfig = new();
 
     public ObservableCollection<ChatMessage> ChatMessages { get; } = new();
 
@@ -35,16 +36,14 @@ public partial class MainWindow : Window
         {
             CaptureStatusText.Text = "設定ファイルを読み込んでいます...";
 
-            var appConfig = ConfigManager.Load();
+            _appConfig = ConfigManager.Load();
 
-            ChatListBox.FontSize = Math.Clamp(appConfig.FontSize, 8, 48);
-            Opacity = Math.Clamp(appConfig.Opacity, 0.2, 1.0);
-            Topmost = appConfig.TopMost;
+            ApplyDisplaySettings(_appConfig);
 
             var netCapConfig = new NetCapConfig
             {
-                ExeNames = appConfig.ExeNames.ToArray(),
-                CaptureDeviceName = appConfig.CaptureDeviceName
+                ExeNames = _appConfig.ExeNames.ToArray(),
+                CaptureDeviceName = _appConfig.CaptureDeviceName
             };
 
             CaptureStatusText.Text = "Npcapを初期化しています...";
@@ -71,6 +70,29 @@ public partial class MainWindow : Window
 
         _statusTimer.Tick += UpdateCaptureStatus;
         _statusTimer.Start();
+    }
+
+    private void ApplyDisplaySettings(AppConfig config)
+    {
+        ChatListBox.FontSize = Math.Clamp(config.FontSize, 8, 48);
+        Opacity = Math.Clamp(config.Opacity, 0.2, 1.0);
+        Topmost = config.TopMost;
+    }
+
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        var settingsWindow = new SettingsWindow(_appConfig)
+        {
+            Owner = this
+        };
+
+        if (settingsWindow.ShowDialog() == true &&
+            settingsWindow.SavedConfig is { } savedConfig)
+        {
+            ConfigManager.Save(savedConfig);
+            _appConfig = savedConfig;
+            ApplyDisplaySettings(_appConfig);
+        }
     }
 
     private void OnChatReceived(ChatMessage message)
