@@ -80,6 +80,8 @@ public partial class MainWindow : Window
             Math.Clamp(config.BackgroundOpacity, 0.0, 1.0);
         Resources["ChatTextOpacity"] =
             Math.Clamp(config.TextOpacity, 0.0, 1.0);
+        MenuBackgroundBorder.Opacity =
+            Math.Clamp(config.MenuBackgroundOpacity, 0.0, 1.0);
         Topmost = config.TopMost;
     }
 

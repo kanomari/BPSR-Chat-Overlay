@@ -3,5 +3,6 @@
   "FontSize": 24,
   "BackgroundOpacity": 0.7,
   "TextOpacity": 1.0,
+  "MenuBackgroundOpacity": 0.9,
   "TopMost": true
 }

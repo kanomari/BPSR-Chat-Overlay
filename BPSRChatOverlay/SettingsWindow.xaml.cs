@@ -22,6 +22,9 @@ public partial class SettingsWindow : Window
             currentConfig.BackgroundOpacity.ToString(CultureInfo.CurrentCulture);
         TextOpacityTextBox.Text =
             currentConfig.TextOpacity.ToString(CultureInfo.CurrentCulture);
+        MenuBackgroundOpacityTextBox.Text =
+            currentConfig.MenuBackgroundOpacity.ToString(
+                CultureInfo.CurrentCulture);
         TopMostCheckBox.IsChecked = currentConfig.TopMost;
     }
 
@@ -109,6 +112,34 @@ public partial class SettingsWindow : Window
             return;
         }
 
+        if (!double.TryParse(
+                MenuBackgroundOpacityTextBox.Text,
+                NumberStyles.Float,
+                CultureInfo.CurrentCulture,
+                out double menuBackgroundOpacity))
+        {
+            MessageBox.Show(
+                this,
+                "メニューバー背景不透明度には小数を入力してください。",
+                "入力エラー",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        if (!double.IsFinite(menuBackgroundOpacity) ||
+            menuBackgroundOpacity < 0.0 ||
+            menuBackgroundOpacity > 1.0)
+        {
+            MessageBox.Show(
+                this,
+                "メニューバー背景不透明度は0.0～1.0の範囲で入力してください。",
+                "入力エラー",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
         SavedConfig = new AppConfig
         {
             CaptureDeviceName = _currentConfig.CaptureDeviceName,
@@ -116,6 +147,7 @@ public partial class SettingsWindow : Window
             FontSize = fontSize,
             BackgroundOpacity = backgroundOpacity,
             TextOpacity = textOpacity,
+            MenuBackgroundOpacity = menuBackgroundOpacity,
             TopMost = TopMostCheckBox.IsChecked == true
         };
 

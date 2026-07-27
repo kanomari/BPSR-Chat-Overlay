@@ -22,5 +22,7 @@ public sealed class AppConfig
 
     public double TextOpacity { get; set; } = 1.0;
 
+    public double MenuBackgroundOpacity { get; set; } = 0.9;
+
     public bool TopMost { get; set; } = true;
 }

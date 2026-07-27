@@ -43,42 +43,49 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <Border
-                Background="#F2F2F2"
-                BorderBrush="#C0C0C0"
-                BorderThickness="0,0,0,1"
-                CornerRadius="7,7,0,0">
+            <Grid>
+                <Border
+                    x:Name="MenuBackgroundBorder"
+                    Background="#F2F2F2"
+                    CornerRadius="7,7,0,0"/>
 
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
+                <Border
+                    Background="Transparent"
+                    BorderBrush="#C0C0C0"
+                    BorderThickness="0,0,0,1"
+                    CornerRadius="7,7,0,0">
 
-                    <Border
-                        Background="Transparent"
-                        Padding="10,0"
-                        MouseLeftButtonDown="MenuDragArea_MouseLeftButtonDown">
-                        <TextBlock
-                            Text="BPSR Chat Overlay"
-                            FontWeight="SemiBold"
-                            VerticalAlignment="Center"/>
-                    </Border>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
 
-                    <Button
-                        Grid.Column="1"
-                        Content="設定"
-                        Style="{StaticResource MenuLinkButtonStyle}"
-                        Click="SettingsButton_Click"/>
+                        <Border
+                            Background="Transparent"
+                            Padding="10,0"
+                            MouseLeftButtonDown="MenuDragArea_MouseLeftButtonDown">
+                            <TextBlock
+                                Text="BPSR Chat Overlay"
+                                FontWeight="SemiBold"
+                                VerticalAlignment="Center"/>
+                        </Border>
 
-                    <Button
-                        Grid.Column="2"
-                        Content="終了"
-                        Style="{StaticResource MenuLinkButtonStyle}"
-                        Click="ExitButton_Click"/>
-                </Grid>
-            </Border>
+                        <Button
+                            Grid.Column="1"
+                            Content="設定"
+                            Style="{StaticResource MenuLinkButtonStyle}"
+                            Click="SettingsButton_Click"/>
+
+                        <Button
+                            Grid.Column="2"
+                            Content="終了"
+                            Style="{StaticResource MenuLinkButtonStyle}"
+                            Click="ExitButton_Click"/>
+                    </Grid>
+                </Border>
+            </Grid>
 
             <Grid Grid.Row="1" Margin="20">
                 <Grid.RowDefinitions>
@@ -161,10 +168,7 @@
 
                     <Border
                         Grid.Row="1"
-                        Background="Transparent"
-                        BorderBrush="#808080"
-                        BorderThickness="1"
-                        CornerRadius="6">
+                        Background="Transparent">
 
                         <ListBox
                             x:Name="ChatListBox"
