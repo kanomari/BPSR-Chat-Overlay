@@ -3,12 +3,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="表示設定"
         Width="380"
-        Height="270"
+        Height="350"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner">
 
     <Grid Margin="20">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -40,16 +41,39 @@
             </Grid.ColumnDefinitions>
 
             <TextBlock
-                Text="不透明度:"
+                Text="背景不透明度:"
                 VerticalAlignment="Center"/>
 
             <StackPanel Grid.Column="1">
                 <TextBox
-                    x:Name="OpacityTextBox"
+                    x:Name="BackgroundOpacityTextBox"
                     Width="100"
                     HorizontalAlignment="Left"/>
                 <TextBlock
-                    Text="0.2（透明）～1.0（不透明）の範囲で入力してください。"
+                    Text="背景の濃さを0.0～1.0で入力してください。"
+                    Margin="0,4,0,0"
+                    Foreground="#606060"
+                    FontSize="12"/>
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="2" Margin="0,16,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="120"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock
+                Text="文字不透明度:"
+                VerticalAlignment="Center"/>
+
+            <StackPanel Grid.Column="1">
+                <TextBox
+                    x:Name="TextOpacityTextBox"
+                    Width="100"
+                    HorizontalAlignment="Left"/>
+                <TextBlock
+                    Text="チャット文字の濃さを0.0～1.0で入力してください。"
                     Margin="0,4,0,0"
                     Foreground="#606060"
                     FontSize="12"/>
@@ -58,12 +82,12 @@
 
         <CheckBox
             x:Name="TopMostCheckBox"
-            Grid.Row="2"
+            Grid.Row="3"
             Content="常に最前面に表示する"
             Margin="120,16,0,0"/>
 
         <StackPanel
-            Grid.Row="4"
+            Grid.Row="5"
             Orientation="Horizontal"
             HorizontalAlignment="Right">
             <Button

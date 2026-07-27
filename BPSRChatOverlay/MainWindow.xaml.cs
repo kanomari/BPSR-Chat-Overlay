@@ -75,7 +75,6 @@ public partial class MainWindow : Window
     private void ApplyDisplaySettings(AppConfig config)
     {
         ChatListBox.FontSize = Math.Clamp(config.FontSize, 8, 48);
-        Opacity = Math.Clamp(config.Opacity, 0.2, 1.0);
         Topmost = config.TopMost;
     }
 

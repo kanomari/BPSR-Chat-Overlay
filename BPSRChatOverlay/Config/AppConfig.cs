@@ -18,7 +18,9 @@ public sealed class AppConfig
 
     public int FontSize { get; set; } = 16;
 
-    public double Opacity { get; set; } = 1.0;
+    public double BackgroundOpacity { get; set; } = 0.7;
+
+    public double TextOpacity { get; set; } = 1.0;
 
     public bool TopMost { get; set; } = true;
 }

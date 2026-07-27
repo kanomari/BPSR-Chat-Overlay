@@ -18,8 +18,10 @@ public partial class SettingsWindow : Window
 
         FontSizeTextBox.Text =
             currentConfig.FontSize.ToString(CultureInfo.CurrentCulture);
-        OpacityTextBox.Text =
-            currentConfig.Opacity.ToString(CultureInfo.CurrentCulture);
+        BackgroundOpacityTextBox.Text =
+            currentConfig.BackgroundOpacity.ToString(CultureInfo.CurrentCulture);
+        TextOpacityTextBox.Text =
+            currentConfig.TextOpacity.ToString(CultureInfo.CurrentCulture);
         TopMostCheckBox.IsChecked = currentConfig.TopMost;
     }
 
@@ -52,25 +54,55 @@ public partial class SettingsWindow : Window
         }
 
         if (!double.TryParse(
-                OpacityTextBox.Text,
+                BackgroundOpacityTextBox.Text,
                 NumberStyles.Float,
                 CultureInfo.CurrentCulture,
-                out double opacity))
+                out double backgroundOpacity))
         {
             MessageBox.Show(
                 this,
-                "不透明度には小数を入力してください。",
+                "背景不透明度には小数を入力してください。",
                 "入力エラー",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
             return;
         }
 
-        if (opacity < 0.2 || opacity > 1.0)
+        if (!double.IsFinite(backgroundOpacity) ||
+            backgroundOpacity < 0.0 ||
+            backgroundOpacity > 1.0)
         {
             MessageBox.Show(
                 this,
-                "不透明度は0.2～1.0の範囲で入力してください。",
+                "背景不透明度は0.0～1.0の範囲で入力してください。",
+                "入力エラー",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        if (!double.TryParse(
+                TextOpacityTextBox.Text,
+                NumberStyles.Float,
+                CultureInfo.CurrentCulture,
+                out double textOpacity))
+        {
+            MessageBox.Show(
+                this,
+                "文字不透明度には小数を入力してください。",
+                "入力エラー",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        if (!double.IsFinite(textOpacity) ||
+            textOpacity < 0.0 ||
+            textOpacity > 1.0)
+        {
+            MessageBox.Show(
+                this,
+                "文字不透明度は0.0～1.0の範囲で入力してください。",
                 "入力エラー",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
@@ -82,7 +114,8 @@ public partial class SettingsWindow : Window
             CaptureDeviceName = _currentConfig.CaptureDeviceName,
             ExeNames = [.. _currentConfig.ExeNames],
             FontSize = fontSize,
-            Opacity = opacity,
+            BackgroundOpacity = backgroundOpacity,
+            TextOpacity = textOpacity,
             TopMost = TopMostCheckBox.IsChecked == true
         };
 
