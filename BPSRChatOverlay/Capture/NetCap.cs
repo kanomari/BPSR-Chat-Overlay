@@ -25,8 +25,6 @@ public class NetCap
     private byte[] DecompressionScratchBuffer = new byte[1024 * 1024];
     private Decompressor _decompressor = new();
     private Dictionary<NotifyId, Action<ReadOnlySpan<byte>, ExtraPacketData>> NotifyHandlers = new();
-    private Dictionary<ProxyId, Action<ReadOnlySpan<byte>, uint, ExtraPacketData>> ProxyHandlers = new();
-    private Dictionary<ProxyId, Action<ReadOnlySpan<byte>, uint, ExtraPacketData>> ProxyReturnHandlers = new();
     private ConcurrentDictionary<uint, ProxyId> ProxyReturnsDictionary = new();
     public ulong NumSeenPackets = 0;
     public DateTime LastPacketSeenAt = DateTime.MinValue;
@@ -343,12 +341,6 @@ public class NetCap
 
         //Log.Logger.Information($"ParseCall: I:{proxyServiceId} S:{subId} R:{returnUid} M:{proxyMethodId} Len={data.Length} IsCompressed={isCompressed}{(loggedMsg.Length > 0 ? $"\nData: [{loggedMsg}]" : "")}");
 
-        var id = new ProxyId((uint)proxyServiceId, proxyMethodId);
-        if (ProxyHandlers.TryGetValue(id, out var handler))
-        {
-            var extraData = new ExtraPacketData(lastPacketTime);
-            handler(msgData, returnUid, extraData);
-        }
     }
 
     private void ParseFrameUp(ReadOnlySpan<byte> data, bool isCompressed, DateTime lastPacketTime)
@@ -394,12 +386,6 @@ public class NetCap
 
                 //Log.Logger.Information($"ParseFrameUp: U:{uuid} L:{length} F:{flags} P0:{padding0} I:{proxyServiceId} R:{returnUid} M:{proxyMethodId} MsgDataLen={msgData.Length} Len={data.Length} IsCompressed={isCompressed}");
 
-                var id = new ProxyId(proxyServiceId, proxyMethodId);
-                if (ProxyHandlers.TryGetValue(id, out var handler))
-                {
-                    var extraData = new ExtraPacketData(lastPacketTime);
-                    handler(msgData, returnUid, extraData);
-                }
             }
             else
             {
@@ -426,12 +412,6 @@ public class NetCap
 
                 //Log.Logger.Information($"ParseFrameUp: U:{uuid} L:{length} F:{flags} P0:{padding0} I:{proxyServiceId} P1:{padding1} R:{returnUid} M:{proxyMethodId} Len={data.Length} IsCompressed={isCompressed}");
 
-                var id = new ProxyId(proxyServiceId, proxyMethodId);
-                if (ProxyHandlers.TryGetValue(id, out var handler))
-                {
-                    var extraData = new ExtraPacketData(lastPacketTime);
-                    handler(msgData, returnUid, extraData);
-                }
             }
 
             embeddedNum++;
@@ -479,16 +459,7 @@ public class NetCap
 
         //Log.Logger.Information($"ParseReturn: S:{subId} R:{returnUid} T:{thirdId} Start={protoStart} Len={data.Length} IsCompressed={isCompressed}");
 
-        if (ProxyReturnsDictionary.TryRemove(returnUid, out var frameUp))
-        {
-            var id = new ProxyId(frameUp.ServiceId, frameUp.MethodId);
-            if (ProxyReturnHandlers.TryGetValue(id, out var handler))
-            {
-                ReadOnlySpan<byte> msgDataFinal = msgData[protoStart..];
-                var extraData = new ExtraPacketData(lastPacketTime);
-                handler(msgDataFinal, returnUid, extraData);
-            }
-        }
+        ProxyReturnsDictionary.TryRemove(returnUid, out _);
     }
 
     private ReadOnlySpan<byte> Decompress(ReadOnlySpan<byte> data)
