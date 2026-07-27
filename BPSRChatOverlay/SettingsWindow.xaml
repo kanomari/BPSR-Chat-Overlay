@@ -3,12 +3,15 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="表示設定"
         Width="460"
-        Height="650"
+        Height="720"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner">
 
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
     <Grid Margin="20">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -160,8 +163,143 @@
                 FontSize="12"/>
         </StackPanel>
 
-        <StackPanel
+        <GroupBox
+            Grid.Row="8"
+            Header="色設定"
+            Margin="0,16,0,0">
+            <StackPanel Margin="12,8">
+                <TextBlock
+                    Text="文字色"
+                    FontWeight="SemiBold"
+                    Margin="0,0,0,6"/>
+
+                <DockPanel Margin="0,3">
+                    <TextBlock Text="ワールド" Width="110" VerticalAlignment="Center"/>
+                    <Border x:Name="WorldChatTextColorPreview" Width="44" Height="22"
+                            BorderBrush="#808080" BorderThickness="1" Margin="0,0,8,0"/>
+                    <Button Content="色を選択" Tag="WorldChatTextColor"
+                            Click="ColorButton_Click"/>
+                </DockPanel>
+                <DockPanel Margin="0,3">
+                    <TextBlock Text="チャンネル" Width="110" VerticalAlignment="Center"/>
+                    <Border x:Name="ChannelChatTextColorPreview" Width="44" Height="22"
+                            BorderBrush="#808080" BorderThickness="1" Margin="0,0,8,0"/>
+                    <Button Content="色を選択" Tag="ChannelChatTextColor"
+                            Click="ColorButton_Click"/>
+                </DockPanel>
+                <DockPanel Margin="0,3">
+                    <TextBlock Text="パーティ" Width="110" VerticalAlignment="Center"/>
+                    <Border x:Name="PartyChatTextColorPreview" Width="44" Height="22"
+                            BorderBrush="#808080" BorderThickness="1" Margin="0,0,8,0"/>
+                    <Button Content="色を選択" Tag="PartyChatTextColor"
+                            Click="ColorButton_Click"/>
+                </DockPanel>
+                <DockPanel Margin="0,3">
+                    <TextBlock Text="ギルド" Width="110" VerticalAlignment="Center"/>
+                    <Border x:Name="GuildChatTextColorPreview" Width="44" Height="22"
+                            BorderBrush="#808080" BorderThickness="1" Margin="0,0,8,0"/>
+                    <Button Content="色を選択" Tag="GuildChatTextColor"
+                            Click="ColorButton_Click"/>
+                </DockPanel>
+
+                <TextBlock
+                    Text="背景色"
+                    FontWeight="SemiBold"
+                    Margin="0,10,0,6"/>
+
+                <DockPanel Margin="0,3">
+                    <TextBlock Text="チャット背景" Width="110" VerticalAlignment="Center"/>
+                    <Border x:Name="ChatBackgroundColorPreview" Width="44" Height="22"
+                            BorderBrush="#808080" BorderThickness="1" Margin="0,0,8,0"/>
+                    <Button Content="色を選択" Tag="ChatBackgroundColor"
+                            Click="ColorButton_Click"/>
+                </DockPanel>
+                <DockPanel Margin="0,3">
+                    <TextBlock Text="メニュー背景" Width="110" VerticalAlignment="Center"/>
+                    <Border x:Name="MenuBackgroundColorPreview" Width="44" Height="22"
+                            BorderBrush="#808080" BorderThickness="1" Margin="0,0,8,0"/>
+                    <Button Content="色を選択" Tag="MenuBackgroundColor"
+                            Click="ColorButton_Click"/>
+                </DockPanel>
+            </StackPanel>
+        </GroupBox>
+
+        <GroupBox
             Grid.Row="9"
+            Header="メンション通知"
+            Margin="0,16,0,0">
+            <StackPanel Margin="12,8">
+                <CheckBox
+                    x:Name="EnableMentionNotificationCheckBox"
+                    Content="メンション通知を有効にする"/>
+                <CheckBox
+                    x:Name="EnableMentionSoundCheckBox"
+                    Content="通知音を鳴らす"
+                    Margin="0,8,0,0"
+                    IsEnabled="{Binding IsChecked, ElementName=EnableMentionNotificationCheckBox}"/>
+
+                <TextBlock
+                    Text="メンションキーワード"
+                    Margin="0,12,0,0"/>
+                <TextBox
+                    x:Name="MentionKeywordsTextBox"
+                    Height="64"
+                    Margin="0,6,0,0"
+                    AcceptsReturn="True"
+                    TextWrapping="Wrap"
+                    VerticalScrollBarVisibility="Auto"/>
+                <TextBlock
+                    Text="スペースまたは改行で複数指定できます"
+                    Margin="0,4,0,0"
+                    Foreground="#606060"
+                    FontSize="12"/>
+
+                <TextBlock
+                    Text="メンション背景色"
+                    Margin="0,12,0,6"/>
+                <DockPanel>
+                    <Border
+                        x:Name="MentionHighlightColorPreview"
+                        Width="44"
+                        Height="22"
+                        BorderBrush="#808080"
+                        BorderThickness="1"
+                        Margin="0,0,8,0"/>
+                    <Button
+                        Content="色を選択"
+                        Tag="MentionHighlightColor"
+                        Click="ColorButton_Click"/>
+                </DockPanel>
+
+                <TextBlock
+                    Text="通知音ファイル"
+                    Margin="0,12,0,6"/>
+                <DockPanel>
+                    <Button
+                        DockPanel.Dock="Right"
+                        Content="クリア"
+                        Margin="6,0,0,0"
+                        Click="ClearMentionSoundButton_Click"/>
+                    <Button
+                        DockPanel.Dock="Right"
+                        Content="参照"
+                        Margin="6,0,0,0"
+                        Click="BrowseMentionSoundButton_Click"/>
+                    <TextBox
+                        x:Name="MentionSoundFilePathTextBox"
+                        IsReadOnly="True"/>
+                </DockPanel>
+
+                <Button
+                    Content="テスト再生"
+                    HorizontalAlignment="Left"
+                    Margin="0,10,0,0"
+                    Click="TestMentionSoundButton_Click"/>
+            </StackPanel>
+        </GroupBox>
+
+        <StackPanel
+            Grid.Row="11"
             Orientation="Horizontal"
             HorizontalAlignment="Right">
             <Button
@@ -177,4 +315,5 @@
                 Click="CancelButton_Click"/>
         </StackPanel>
     </Grid>
+    </ScrollViewer>
 </Window>

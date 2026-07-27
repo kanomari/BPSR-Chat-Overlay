@@ -44,5 +44,27 @@ public sealed class AppConfig
 
     public string ChatFilterKeywords { get; set; } = string.Empty;
 
+    public string WorldChatTextColor { get; set; } = "#FFFFFFFF";
+
+    public string ChannelChatTextColor { get; set; } = "#FFFFFFFF";
+
+    public string PartyChatTextColor { get; set; } = "#FFFFFFFF";
+
+    public string GuildChatTextColor { get; set; } = "#FFFFFFFF";
+
+    public string ChatBackgroundColor { get; set; } = "#FF000000";
+
+    public string MenuBackgroundColor { get; set; } = "#FFF2F2F2";
+
+    public bool EnableMentionNotification { get; set; } = true;
+
+    public bool EnableMentionSound { get; set; } = true;
+
+    public string MentionKeywords { get; set; } = string.Empty;
+
+    public string MentionHighlightColor { get; set; } = "#60FFD54F";
+
+    public string MentionSoundFilePath { get; set; } = string.Empty;
+
     public bool TopMost { get; set; } = true;
 }

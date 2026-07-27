@@ -16,6 +16,7 @@
     <Window.Resources>
         <converters:ChannelNameConverter x:Key="ChannelNameConverter"/>
         <converters:ChannelBrushConverter x:Key="ChannelBrushConverter"/>
+        <converters:MentionHighlightConverter x:Key="MentionHighlightConverter"/>
         <system:Double x:Key="ChatTextOpacity">1.0</system:Double>
 
         <Style x:Key="MenuLinkButtonStyle" TargetType="Button">
@@ -182,9 +183,11 @@
 
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid
+                                    <Border
                                         Margin="6,4"
-                                        Opacity="{DynamicResource ChatTextOpacity}">
+                                        CornerRadius="3"
+                                        Background="{Binding IsMention, Converter={StaticResource MentionHighlightConverter}}">
+                                    <Grid Opacity="{DynamicResource ChatTextOpacity}">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="75"/>
                                             <ColumnDefinition Width="70"/>
@@ -206,6 +209,7 @@
                                         <TextBlock
                                             Grid.Column="2"
                                             Text="{Binding SenderName}"
+                                            Foreground="{Binding ChannelType, Converter={StaticResource ChannelBrushConverter}, ConverterParameter=ChatText}"
                                             FontWeight="Bold"
                                             TextTrimming="CharacterEllipsis"
                                             Margin="6,0"/>
@@ -213,8 +217,10 @@
                                         <TextBlock
                                             Grid.Column="3"
                                             Text="{Binding Message}"
+                                            Foreground="{Binding ChannelType, Converter={StaticResource ChannelBrushConverter}, ConverterParameter=ChatText}"
                                             TextWrapping="Wrap"/>
                                     </Grid>
+                                    </Border>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>

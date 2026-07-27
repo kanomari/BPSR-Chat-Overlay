@@ -12,18 +12,34 @@ public sealed class ChannelBrushConverter : IValueConverter
         object parameter,
         CultureInfo culture)
     {
+        bool useConfiguredChatTextColor =
+            parameter is string text &&
+            text == "ChatText";
+
         if (value is not int channelType)
         {
-            return ChatColors.Unknown;
+            return useConfiguredChatTextColor
+                ? ChatColors.Unknown
+                : System.Windows.Media.Brushes.Gray;
         }
 
         return channelType switch
         {
-            1 => ChatColors.World,
-            2 => ChatColors.Channel,
-            3 => ChatColors.Party,
-            4 => ChatColors.Guild,
-            _ => ChatColors.Unknown
+            1 => useConfiguredChatTextColor
+                ? ChatColors.World
+                : System.Windows.Media.Brushes.MediumOrchid,
+            2 => useConfiguredChatTextColor
+                ? ChatColors.Channel
+                : System.Windows.Media.Brushes.White,
+            3 => useConfiguredChatTextColor
+                ? ChatColors.Party
+                : System.Windows.Media.Brushes.DeepSkyBlue,
+            4 => useConfiguredChatTextColor
+                ? ChatColors.Guild
+                : System.Windows.Media.Brushes.YellowGreen,
+            _ => useConfiguredChatTextColor
+                ? ChatColors.Unknown
+                : System.Windows.Media.Brushes.Gray
         };
     }
 

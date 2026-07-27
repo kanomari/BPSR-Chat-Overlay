@@ -9,4 +9,6 @@ public sealed class ChatMessage
     public string Message { get; init; } = string.Empty;
 
     public DateTime Timestamp { get; init; } = DateTime.Now;
+
+    public bool IsMention { get; set; }
 }

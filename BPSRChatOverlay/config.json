@@ -14,5 +14,16 @@
   "ShowPartyChat": true,
   "ShowGuildChat": true,
   "ChatFilterKeywords": "",
+  "WorldChatTextColor": "#FFFFFFFF",
+  "ChannelChatTextColor": "#FFFFFFFF",
+  "PartyChatTextColor": "#FFFFFFFF",
+  "GuildChatTextColor": "#FFFFFFFF",
+  "ChatBackgroundColor": "#FF000000",
+  "MenuBackgroundColor": "#FFF2F2F2",
+  "EnableMentionNotification": true,
+  "EnableMentionSound": true,
+  "MentionKeywords": "",
+  "MentionHighlightColor": "#60FFD54F",
+  "MentionSoundFilePath": "",
   "TopMost": true
 }

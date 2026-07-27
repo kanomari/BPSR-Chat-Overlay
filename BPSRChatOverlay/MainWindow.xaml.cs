@@ -10,6 +10,7 @@ using System.Windows.Threading;
 using BPSRChatOverlay.Config;
 using BPSRChatOverlay.Managers;
 using BPSRChatOverlay.Models;
+using BPSRChatOverlay.UIResources;
 using BPSR_ZDPSLib;
 
 namespace BPSRChatOverlay;
@@ -40,10 +41,12 @@ public partial class MainWindow : Window
 
     private readonly NetCap _netCap = new();
     private readonly List<ChatMessage> _chatHistory = [];
+    private readonly MentionSoundPlayer _mentionSoundPlayer = new();
     private readonly DispatcherTimer _statusTimer;
     private readonly DispatcherTimer _windowPlacementSaveTimer;
     private AppConfig _appConfig = new();
     private string[] _chatFilterKeywords = [];
+    private string[] _mentionKeywords = [];
     private IntPtr _windowHandle;
     private HwndSource? _windowSource;
     private bool _clickThroughHotKeyRegistered;
@@ -137,13 +140,23 @@ public partial class MainWindow : Window
 
     private void ApplyDisplaySettings(AppConfig config)
     {
-        _chatFilterKeywords = ParseChatFilterKeywords(
-            config.ChatFilterKeywords);
+        _chatFilterKeywords = ParseKeywords(config.ChatFilterKeywords);
+        _mentionKeywords = ParseKeywords(config.MentionKeywords);
+        ChatColors.Apply(
+            config.WorldChatTextColor,
+            config.ChannelChatTextColor,
+            config.PartyChatTextColor,
+            config.GuildChatTextColor,
+            config.ChatBackgroundColor,
+            config.MenuBackgroundColor,
+            config.MentionHighlightColor);
         ChatListBox.FontSize = Math.Clamp(config.FontSize, 8, 48);
+        ChatBackgroundBorder.Background = ChatColors.ChatBackground;
         ChatBackgroundBorder.Opacity =
             Math.Clamp(config.BackgroundOpacity, 0.0, 1.0);
         Resources["ChatTextOpacity"] =
             Math.Clamp(config.TextOpacity, 0.0, 1.0);
+        MenuBackgroundBorder.Background = ChatColors.MenuBackground;
         MenuBackgroundBorder.Opacity =
             Math.Clamp(config.MenuBackgroundOpacity, 0.0, 1.0);
         Topmost = config.TopMost;
@@ -175,6 +188,7 @@ public partial class MainWindow : Window
             ConfigManager.Save(savedConfig);
             _appConfig = savedConfig;
             ApplyDisplaySettings(_appConfig);
+            ReevaluateMentionStatus();
             RebuildDisplayedChatMessages();
         }
     }
@@ -519,6 +533,7 @@ public partial class MainWindow : Window
          */
         Dispatcher.BeginInvoke(() =>
         {
+            message.IsMention = IsMentionMessage(message);
             _chatHistory.Add(message);
 
             while (_chatHistory.Count > MaxChatMessageCount)
@@ -526,6 +541,12 @@ public partial class MainWindow : Window
                 ChatMessage oldestMessage = _chatHistory[0];
                 _chatHistory.RemoveAt(0);
                 ChatMessages.Remove(oldestMessage);
+            }
+
+            if (message.IsMention && _appConfig.EnableMentionSound)
+            {
+                _mentionSoundPlayer.Play(
+                    _appConfig.MentionSoundFilePath);
             }
 
             bool shouldDisplay = ShouldDisplayChatMessage(message);
@@ -578,7 +599,31 @@ public partial class MainWindow : Window
             messageText.Contains(keyword, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static string[] ParseChatFilterKeywords(string? keywords)
+    private bool IsMentionMessage(ChatMessage message)
+    {
+        if (!_appConfig.EnableMentionNotification ||
+            _mentionKeywords.Length == 0)
+        {
+            return false;
+        }
+
+        string messageText = message.Message ?? string.Empty;
+
+        return _mentionKeywords.Any(keyword =>
+            messageText.Contains(
+                keyword,
+                StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void ReevaluateMentionStatus()
+    {
+        foreach (ChatMessage message in _chatHistory)
+        {
+            message.IsMention = IsMentionMessage(message);
+        }
+    }
+
+    private static string[] ParseKeywords(string? keywords)
     {
         if (string.IsNullOrWhiteSpace(keywords))
         {
@@ -649,6 +694,7 @@ public partial class MainWindow : Window
 
         ChatCaptureManager.ChatReceived -= OnChatReceived;
 
+        _mentionSoundPlayer.Dispose();
         _netCap.Stop();
 
         base.OnClosed(e);
