@@ -6,161 +6,215 @@
         Title="BPSR Chat Overlay - 通信確認"
         Width="800"
         Height="600"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
         WindowStartupLocation="CenterScreen">
 
     <Window.Resources>
         <converters:ChannelNameConverter x:Key="ChannelNameConverter"/>
         <converters:ChannelBrushConverter x:Key="ChannelBrushConverter"/>
         <system:Double x:Key="ChatTextOpacity">1.0</system:Double>
+
+        <Style x:Key="MenuLinkButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="#303030"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#18000000"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
-    <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+    <Border
+        Background="Transparent"
+        BorderBrush="#808080"
+        BorderThickness="1"
+        CornerRadius="8">
 
-        <DockPanel Margin="0,0,0,16">
-            <Button
-                DockPanel.Dock="Right"
-                Content="設定"
-                Width="70"
-                Click="SettingsButton_Click"/>
-
-            <TextBlock
-                Text="BPSR Chat Overlay 通信確認"
-                FontSize="24"
-                FontWeight="Bold"/>
-        </DockPanel>
-
-        <Border
-            Grid.Row="1"
-            Padding="14"
-            Margin="0,0,0,16"
-            BorderBrush="#808080"
-            BorderThickness="1"
-            CornerRadius="6">
-
-            <StackPanel>
-                <TextBlock
-                    Text="パケット取得状況"
-                    FontSize="17"
-                    FontWeight="SemiBold"
-                    Margin="0,0,0,8"/>
-
-                <TextBlock
-                    x:Name="CaptureStatusText"
-                    Text="起動処理中..."
-                    FontSize="14"/>
-
-                <WrapPanel Margin="0,8,0,0">
-                    <TextBlock
-                        x:Name="PacketCountText"
-                        Text="Npcap取得パケット数: 0"
-                        FontSize="14"
-                        Margin="0,0,24,0"/>
-
-                    <TextBlock
-                        x:Name="GameMessageCountText"
-                        Text="ゲームメッセージ検出数: 0"
-                        FontSize="14"
-                        Margin="0,0,24,0"/>
-
-                    <TextBlock
-                        x:Name="DequeuedMessageCountText"
-                        Text="解析処理済みメッセージ数: 0"
-                        FontSize="14"/>
-                </WrapPanel>
-
-                <TextBlock
-                    x:Name="LastPacketTimeText"
-                    Text="最終パケット取得時刻: 未取得"
-                    FontSize="14"
-                    Margin="0,6,0,0"/>
-            </StackPanel>
-        </Border>
-
-        <Grid Grid.Row="2">
+        <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="30"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <DockPanel Margin="0,0,0,8">
-                <TextBlock
-                    Text="受信チャット"
-                    FontSize="18"
-                    FontWeight="SemiBold"/>
-
-                <TextBlock
-                    x:Name="ChatCountText"
-                    DockPanel.Dock="Right"
-                    Text="受信件数: 0"
-                    FontSize="14"
-                    VerticalAlignment="Bottom"/>
-            </DockPanel>
-
             <Border
-                x:Name="ChatBackgroundBorder"
-                Grid.Row="1"
-                Background="Black"
-                CornerRadius="6"/>
+                Background="#F2F2F2"
+                BorderBrush="#C0C0C0"
+                BorderThickness="0,0,0,1"
+                CornerRadius="7,7,0,0">
 
-            <Border
-                Grid.Row="1"
-                Background="Transparent"
-                BorderBrush="#808080"
-                BorderThickness="1"
-                CornerRadius="6">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
-                <ListBox
-                    x:Name="ChatListBox"
-                    ItemsSource="{Binding ChatMessages}"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    FontSize="16"
-                    ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <Border
+                        Background="Transparent"
+                        Padding="10,0"
+                        MouseLeftButtonDown="MenuDragArea_MouseLeftButtonDown">
+                        <TextBlock
+                            Text="BPSR Chat Overlay"
+                            FontWeight="SemiBold"
+                            VerticalAlignment="Center"/>
+                    </Border>
 
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <Grid
-                                Margin="6,4"
-                                Opacity="{DynamicResource ChatTextOpacity}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="75"/>
-                                    <ColumnDefinition Width="70"/>
-                                    <ColumnDefinition Width="150"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
+                    <Button
+                        Grid.Column="1"
+                        Content="設定"
+                        Style="{StaticResource MenuLinkButtonStyle}"
+                        Click="SettingsButton_Click"/>
 
-                                <TextBlock
-                                    Grid.Column="0"
-                                    Text="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}"
-                                    Foreground="#707070"/>
-
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Text="{Binding ChannelType, Converter={StaticResource ChannelNameConverter}}"
-                                    Foreground="{Binding ChannelType, Converter={StaticResource ChannelBrushConverter}}"
-                                    FontWeight="SemiBold"/>
-
-                                <TextBlock
-                                    Grid.Column="2"
-                                    Text="{Binding SenderName}"
-                                    FontWeight="Bold"
-                                    TextTrimming="CharacterEllipsis"
-                                    Margin="6,0"/>
-
-                                <TextBlock
-                                    Grid.Column="3"
-                                    Text="{Binding Message}"
-                                    TextWrapping="Wrap"/>
-                            </Grid>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+                    <Button
+                        Grid.Column="2"
+                        Content="終了"
+                        Style="{StaticResource MenuLinkButtonStyle}"
+                        Click="ExitButton_Click"/>
+                </Grid>
             </Border>
+
+            <Grid Grid.Row="1" Margin="20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Border
+                    Padding="14"
+                    Margin="0,0,0,16"
+                    Background="#F7F7F7"
+                    BorderBrush="#808080"
+                    BorderThickness="1"
+                    CornerRadius="6">
+
+                    <StackPanel>
+                        <TextBlock
+                            Text="パケット取得状況"
+                            FontSize="17"
+                            FontWeight="SemiBold"
+                            Margin="0,0,0,8"/>
+
+                        <TextBlock
+                            x:Name="CaptureStatusText"
+                            Text="起動処理中..."
+                            FontSize="14"/>
+
+                        <WrapPanel Margin="0,8,0,0">
+                            <TextBlock
+                                x:Name="PacketCountText"
+                                Text="Npcap取得パケット数: 0"
+                                FontSize="14"
+                                Margin="0,0,24,0"/>
+
+                            <TextBlock
+                                x:Name="GameMessageCountText"
+                                Text="ゲームメッセージ検出数: 0"
+                                FontSize="14"
+                                Margin="0,0,24,0"/>
+
+                            <TextBlock
+                                x:Name="DequeuedMessageCountText"
+                                Text="解析処理済みメッセージ数: 0"
+                                FontSize="14"/>
+                        </WrapPanel>
+
+                        <TextBlock
+                            x:Name="LastPacketTimeText"
+                            Text="最終パケット取得時刻: 未取得"
+                            FontSize="14"
+                            Margin="0,6,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <Grid Grid.Row="1">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <DockPanel Margin="0,0,0,8">
+                        <TextBlock
+                            Text="受信チャット"
+                            FontSize="18"
+                            FontWeight="SemiBold"/>
+
+                        <TextBlock
+                            x:Name="ChatCountText"
+                            DockPanel.Dock="Right"
+                            Text="受信件数: 0"
+                            FontSize="14"
+                            VerticalAlignment="Bottom"/>
+                    </DockPanel>
+
+                    <Border
+                        x:Name="ChatBackgroundBorder"
+                        Grid.Row="1"
+                        Background="Black"
+                        CornerRadius="6"/>
+
+                    <Border
+                        Grid.Row="1"
+                        Background="Transparent"
+                        BorderBrush="#808080"
+                        BorderThickness="1"
+                        CornerRadius="6">
+
+                        <ListBox
+                            x:Name="ChatListBox"
+                            ItemsSource="{Binding ChatMessages}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            FontSize="16"
+                            ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid
+                                        Margin="6,4"
+                                        Opacity="{DynamicResource ChatTextOpacity}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="75"/>
+                                            <ColumnDefinition Width="70"/>
+                                            <ColumnDefinition Width="150"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock
+                                            Grid.Column="0"
+                                            Text="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}"
+                                            Foreground="#707070"/>
+
+                                        <TextBlock
+                                            Grid.Column="1"
+                                            Text="{Binding ChannelType, Converter={StaticResource ChannelNameConverter}}"
+                                            Foreground="{Binding ChannelType, Converter={StaticResource ChannelBrushConverter}}"
+                                            FontWeight="SemiBold"/>
+
+                                        <TextBlock
+                                            Grid.Column="2"
+                                            Text="{Binding SenderName}"
+                                            FontWeight="Bold"
+                                            TextTrimming="CharacterEllipsis"
+                                            Margin="6,0"/>
+
+                                        <TextBlock
+                                            Grid.Column="3"
+                                            Text="{Binding Message}"
+                                            TextWrapping="Wrap"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+                </Grid>
+            </Grid>
         </Grid>
-    </Grid>
+    </Border>
 </Window>

@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Threading;
 using BPSRChatOverlay.Config;
 using BPSRChatOverlay.Managers;
@@ -96,6 +97,30 @@ public partial class MainWindow : Window
             _appConfig = savedConfig;
             ApplyDisplaySettings(_appConfig);
         }
+    }
+
+    private void MenuDragArea_MouseLeftButtonDown(
+        object sender,
+        MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left)
+        {
+            return;
+        }
+
+        try
+        {
+            DragMove();
+        }
+        catch (InvalidOperationException)
+        {
+            // マウスボタンが既に離された場合は移動を中止します。
+        }
+    }
+
+    private void ExitButton_Click(object sender, RoutedEventArgs e)
+    {
+        Close();
     }
 
     private void OnChatReceived(ChatMessage message)
