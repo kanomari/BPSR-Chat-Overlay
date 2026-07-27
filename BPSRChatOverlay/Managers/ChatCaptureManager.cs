@@ -1,0 +1,35 @@
+﻿using BPSR_ZDPSLib;
+using BPSRChatOverlay.Models;
+using Google.Protobuf;
+using Zproto;
+using static Zproto.ChitChatNtf.Types;
+
+namespace BPSRChatOverlay.Managers;
+
+public static class ChatCaptureManager
+{
+    public static event Action<ChatMessage>? ChatReceived;
+
+    public static void ProcessChatMessage(ReadOnlySpan<byte> payload, ExtraPacketData extraData)
+    {
+        var notify = NotifyNewestChitChatMsgs.Parser.ParseFrom(payload);
+
+        if (notify == null)
+        {
+            return;
+        }
+
+        ChatMessage message = new()
+        {
+            ChannelType = (int)notify.VRequest.ChannelType,
+            SenderName = notify.VRequest.ChatMsg.SendCharInfo.Name,
+            Message = notify.VRequest.ChatMsg.MsgInfo.MsgText,
+            Timestamp = DateTime.Now
+        };
+
+        Console.WriteLine(
+            $"[{message.ChannelType}] {message.SenderName}: {message.Message}");
+
+        ChatReceived?.Invoke(message);
+    }
+}

@@ -1,0 +1,24 @@
+﻿namespace BPSRChatOverlay.Config;
+
+public sealed class AppConfig
+{
+    public string? CaptureDeviceName { get; set; }
+
+    public List<string> ExeNames { get; set; } =
+    [
+        "BPSR",
+        "BPSR_STEAM",
+        "BPSR_EPIC",
+        "StarSEA",
+        "StarASIA",
+        "StarSEA_STEAM",
+        "StarASIA_STEAM",
+        "Star"
+    ];
+
+    public int FontSize { get; set; } = 16;
+
+    public double Opacity { get; set; } = 1.0;
+
+    public bool TopMost { get; set; } = true;
+}
