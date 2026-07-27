@@ -12,6 +12,8 @@ namespace BPSRChatOverlay;
 
 public partial class MainWindow : Window
 {
+    private const int MaxChatMessageCount = 500;
+
     private readonly NetCap _netCap = new();
     private readonly DispatcherTimer _statusTimer;
 
@@ -81,6 +83,11 @@ public partial class MainWindow : Window
         Dispatcher.BeginInvoke(() =>
         {
             ChatMessages.Add(message);
+
+            while (ChatMessages.Count > MaxChatMessageCount)
+            {
+                ChatMessages.RemoveAt(0);
+            }
 
             ChatCountText.Text =
                 $"受信件数: {ChatMessages.Count:N0}";
