@@ -28,8 +28,6 @@ public class NetCap
     private Dictionary<ProxyId, Action<ReadOnlySpan<byte>, uint, ExtraPacketData>> ProxyHandlers = new();
     private Dictionary<ProxyId, Action<ReadOnlySpan<byte>, uint, ExtraPacketData>> ProxyReturnHandlers = new();
     private ConcurrentDictionary<uint, ProxyId> ProxyReturnsDictionary = new();
-    private Action<NotifyId, ReadOnlySpan<byte>, ExtraPacketData>? UnhandledHandler = null;
-    private Action<ProxyId, ReadOnlySpan<byte>, ExtraPacketData>? UnhandledProxyHandler = null;
     public ulong NumSeenPackets = 0;
     public DateTime LastPacketSeenAt = DateTime.MinValue;
     public int NumConnectionReaders = 0;
@@ -315,12 +313,6 @@ public class NetCap
             var extraData = new ExtraPacketData(lastPacketTime);
             handler(msgData, extraData);
         }
-        else if (UnhandledHandler != null)
-        {
-            var extraData = new ExtraPacketData(lastPacketTime);
-            UnhandledHandler(id, msgData, extraData);
-        }
-
         //Log.Information("Service UUID: {ServiceUuid}, Stub ID: {StubId}, Method ID: {MethodId}, IsCompressed: {IsCompressed}", serviceUuid, stubId, methodId, isCompressed);
     }
 
@@ -356,11 +348,6 @@ public class NetCap
         {
             var extraData = new ExtraPacketData(lastPacketTime);
             handler(msgData, returnUid, extraData);
-        }
-        else if (UnhandledProxyHandler != null)
-        {
-            var extraData = new ExtraPacketData(lastPacketTime);
-            UnhandledProxyHandler(id, msgData, extraData);
         }
     }
 
@@ -413,11 +400,6 @@ public class NetCap
                     var extraData = new ExtraPacketData(lastPacketTime);
                     handler(msgData, returnUid, extraData);
                 }
-                else if (UnhandledProxyHandler != null)
-                {
-                    var extraData = new ExtraPacketData(lastPacketTime);
-                    UnhandledProxyHandler(id, msgData, extraData);
-                }
             }
             else
             {
@@ -449,11 +431,6 @@ public class NetCap
                 {
                     var extraData = new ExtraPacketData(lastPacketTime);
                     handler(msgData, returnUid, extraData);
-                }
-                else if (UnhandledProxyHandler != null)
-                {
-                    var extraData = new ExtraPacketData(lastPacketTime);
-                    UnhandledProxyHandler(id, msgData, extraData);
                 }
             }
 
