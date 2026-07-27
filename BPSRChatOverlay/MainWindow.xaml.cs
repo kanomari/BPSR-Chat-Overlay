@@ -673,10 +673,25 @@ public partial class MainWindow : Window
         DequeuedMessageCountText.Text =
             $"解析処理済みメッセージ数: {_netCap.NumGameMessagesDequeued:N0}";
 
-        LastPacketTimeText.Text =
+        string lastPacketStatus =
             _netCap.LastPacketSeenAt == DateTime.MinValue
                 ? "最終パケット取得時刻: 未取得"
                 : $"最終パケット取得時刻: {_netCap.LastPacketSeenAt:HH:mm:ss.fff}";
+
+        if (_netCap.CaptureDeviceSelection is { } selection)
+        {
+            lastPacketStatus +=
+                $"\n使用中NIC: {selection.DisplayName}" +
+                $"\n選択理由: {selection.SelectionReasonText}";
+
+            if (selection.ConfiguredDeviceMissing)
+            {
+                lastPacketStatus +=
+                    "\n警告: 設定したネットワークカードが見つかりませんでした";
+            }
+        }
+
+        LastPacketTimeText.Text = lastPacketStatus;
     }
 
     protected override void OnClosed(EventArgs e)

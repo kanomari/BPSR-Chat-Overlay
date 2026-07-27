@@ -33,6 +33,7 @@ public class NetCap
     public ConcurrentBag<string> ImportantLogMsgs = [];
     public ulong NumGameMessagesSeen = 0;
     public ulong NumGameMessagesDequeued = 0;
+    public CaptureDeviceSelectionInfo? CaptureDeviceSelection { get; private set; }
 
     private bool IsDebugCaptureFileMode = false;
     private string DebugCaptureFile = "";//@"C:\Users\Xennma\Documents\BPSR_PacketCapture.pcap";
@@ -509,47 +510,188 @@ public class NetCap
     public void PrintCaptureDevices()
     {
         var devices = CaptureDeviceList.Instance;
-        foreach (var liveDevice in devices)
+        foreach (var device in devices)
         {
-            var dev = (LibPcapLiveDevice)liveDevice;
-            Log.Information("Device: {DeviceName}, {FriendlyName}", dev.Name, dev.Interface?.FriendlyName);
+            Log.Information(
+                "Device: {DeviceName}, {FriendlyName}, {Description}",
+                device.Name,
+                GetFriendlyName(device),
+                device.Description);
         }
     }
 
     private ICaptureDevice GetCaptureDevice()
     {
-        var devices = CaptureDeviceList.Instance;
+        CaptureDeviceList devices;
 
         try
         {
-            foreach (var liveDevice in devices)
-            {
-                var dev = (LibPcapLiveDevice)liveDevice;
-
-                if (dev.Name == Config.CaptureDeviceName)
-                    return dev;
-
-                if (dev.Description == Config.CaptureDeviceName)
-                    return dev;
-            }
-
-            Log.Information("No matched capture device, trying to find Ethernet");
-            var ethernet = devices.FirstOrDefault(x => ((LibPcapLiveDevice)x).Interface?.FriendlyName == "Ethernet");
-            if (ethernet != null)
-            {
-                Log.Information("Found Ethernet named capture device, using it: {DeviceName}, {FriendlyName}", ethernet.Name, ((LibPcapLiveDevice)ethernet).Interface?.FriendlyName);
-                return ethernet;
-            }
+            devices = CaptureDeviceList.Instance;
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            Log.Error(e, "Error getting capture device");
+            Log.Error(ex, "Error enumerating capture devices");
             throw;
         }
 
-        var device = devices[0];
-        Log.Information("No matched capture device, using first found: {DeviceName}, {FriendlyName}", device.Name, ((LibPcapLiveDevice)device).Interface?.FriendlyName);
+        if (devices.Count == 0)
+        {
+            var exception = new InvalidOperationException(
+                "利用可能なネットワークカードが見つかりません。Npcapの導入状態を確認してください。");
+            Log.Error(exception, "No capture devices were found");
+            throw exception;
+        }
+
+        string? configuredDeviceName = Config.CaptureDeviceName;
+        bool wasConfigurationEmpty =
+            string.IsNullOrWhiteSpace(configuredDeviceName);
+
+        try
+        {
+            foreach (var device in devices)
+            {
+                if (!wasConfigurationEmpty &&
+                    device.Name == configuredDeviceName)
+                {
+                    return SelectCaptureDevice(
+                        device,
+                        CaptureDeviceSelectionReason.SavedNameMatch,
+                        configuredDeviceName,
+                        false,
+                        false,
+                        wasConfigurationEmpty);
+                }
+
+                if (!wasConfigurationEmpty &&
+                    device.Description == configuredDeviceName)
+                {
+                    return SelectCaptureDevice(
+                        device,
+                        CaptureDeviceSelectionReason.SavedDescriptionMatch,
+                        configuredDeviceName,
+                        false,
+                        false,
+                        wasConfigurationEmpty);
+                }
+            }
+
+            var ethernet = devices.FirstOrDefault(device =>
+                GetFriendlyName(device) == "Ethernet");
+            if (ethernet != null)
+            {
+                return SelectCaptureDevice(
+                    ethernet,
+                    wasConfigurationEmpty
+                        ? CaptureDeviceSelectionReason.ConfigurationEmptyEthernet
+                        : CaptureDeviceSelectionReason.ConfiguredDeviceMissingEthernet,
+                    configuredDeviceName,
+                    !wasConfigurationEmpty,
+                    !wasConfigurationEmpty,
+                    wasConfigurationEmpty);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error selecting capture device");
+            throw;
+        }
+
+        var firstDevice = devices[0];
+        return SelectCaptureDevice(
+            firstDevice,
+            wasConfigurationEmpty
+                ? CaptureDeviceSelectionReason.ConfigurationEmptyFirstDevice
+                : CaptureDeviceSelectionReason.ConfiguredDeviceMissingFirstDevice,
+            configuredDeviceName,
+            !wasConfigurationEmpty,
+            !wasConfigurationEmpty,
+            wasConfigurationEmpty);
+    }
+
+    private ICaptureDevice SelectCaptureDevice(
+        ICaptureDevice device,
+        CaptureDeviceSelectionReason selectionReason,
+        string? configuredDeviceName,
+        bool wasFallback,
+        bool configuredDeviceMissing,
+        bool wasConfigurationEmpty)
+    {
+        string actualDeviceName = device.Name ?? string.Empty;
+        string? friendlyName = NormalizeDeviceText(GetFriendlyName(device));
+        string? description = NormalizeDeviceText(device.Description);
+        string displayName = CreateCaptureDeviceDisplayName(
+            actualDeviceName,
+            friendlyName,
+            description);
+
+        CaptureDeviceSelection = new CaptureDeviceSelectionInfo(
+            actualDeviceName,
+            friendlyName,
+            description,
+            displayName,
+            selectionReason,
+            wasFallback,
+            configuredDeviceMissing,
+            wasConfigurationEmpty,
+            configuredDeviceName);
+
+        Log.Information(
+            "Capture device selected. SelectionReason: {SelectionReason}, ConfiguredDeviceName: {ConfiguredDeviceName}, ActualDeviceName: {ActualDeviceName}, FriendlyName: {FriendlyName}, Description: {Description}, DisplayName: {DisplayName}, WasFallback: {WasFallback}, ConfiguredDeviceMissing: {ConfiguredDeviceMissing}, WasConfigurationEmpty: {WasConfigurationEmpty}",
+            CaptureDeviceSelection.SelectionReason,
+            CaptureDeviceSelection.ConfiguredDeviceName,
+            CaptureDeviceSelection.ActualDeviceName,
+            CaptureDeviceSelection.FriendlyName,
+            CaptureDeviceSelection.Description,
+            CaptureDeviceSelection.DisplayName,
+            CaptureDeviceSelection.WasFallback,
+            CaptureDeviceSelection.ConfiguredDeviceMissing,
+            CaptureDeviceSelection.WasConfigurationEmpty);
+
+        if (configuredDeviceMissing)
+        {
+            Log.Warning(
+                "Configured capture device was not found. ConfiguredDeviceName: {ConfiguredDeviceName}, FallbackReason: {FallbackReason}, ActualDeviceName: {ActualDeviceName}, FriendlyName: {FriendlyName}, Description: {Description}",
+                configuredDeviceName,
+                CaptureDeviceSelection.SelectionReason,
+                actualDeviceName,
+                friendlyName,
+                description);
+        }
+
         return device;
+    }
+
+    private static string? GetFriendlyName(ICaptureDevice device)
+    {
+        return device is LibPcapLiveDevice liveDevice
+            ? liveDevice.Interface?.FriendlyName
+            : null;
+    }
+
+    private static string CreateCaptureDeviceDisplayName(
+        string name,
+        string? friendlyName,
+        string? description)
+    {
+        if (friendlyName is not null &&
+            description is not null &&
+            !string.Equals(
+                friendlyName,
+                description,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return $"{friendlyName} — {description}";
+        }
+
+        return friendlyName ??
+               description ??
+               NormalizeDeviceText(name) ??
+               "名前不明のネットワークカード";
+    }
+
+    private static string? NormalizeDeviceText(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
     public string GetFilterString(IEnumerable<TcpHelper.TcpRow> conns)
