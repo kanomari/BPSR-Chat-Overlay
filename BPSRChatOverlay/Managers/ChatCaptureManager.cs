@@ -19,6 +19,13 @@ public static class ChatCaptureManager
             return;
         }
 
+        // ゲーム内専用絵文字はOverlayでは表示しない
+        if (notify.VRequest.ChatMsg.MsgInfo.MsgType ==
+            ChitChatMsgType.ChatMsgPictureEmoji)
+        {
+            return;
+        }
+
         ChatMessage message = new()
         {
             ChannelType = (int)notify.VRequest.ChannelType,

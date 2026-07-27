@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using BPSRChatOverlay.Config;
 using BPSRChatOverlay.Models;
@@ -88,6 +89,72 @@ public partial class SettingsWindow : Window
         ShowDebugPanelCheckBox.IsChecked =
             currentConfig.ShowDebugPanel;
         UpdateColorPreviews();
+        CategoryListBox.SelectedIndex = 0;
+    }
+
+    private void CategoryListBox_SelectionChanged(
+        object sender,
+        SelectionChangedEventArgs e)
+    {
+        if (DisplaySettingsPanel is null ||
+            ChatSettingsPanel is null ||
+            ColorSettingsPanel is null ||
+            NetworkSettingsPanel is null ||
+            AdvancedSettingsPanel is null)
+        {
+            return;
+        }
+
+        string? category =
+            (CategoryListBox.SelectedItem as ListBoxItem)?.Tag as string;
+
+        DisplaySettingsPanel.Visibility =
+            category == "Display" ? Visibility.Visible : Visibility.Collapsed;
+        ChatSettingsPanel.Visibility =
+            category == "Chat" ? Visibility.Visible : Visibility.Collapsed;
+        ColorSettingsPanel.Visibility =
+            category == "Color" ? Visibility.Visible : Visibility.Collapsed;
+        NetworkSettingsPanel.Visibility =
+            category == "Network" ? Visibility.Visible : Visibility.Collapsed;
+        AdvancedSettingsPanel.Visibility =
+            category == "Advanced" ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void SettingsTitleBar_MouseLeftButtonDown(
+        object sender,
+        MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left ||
+            IsInsideButton(e.OriginalSource as DependencyObject))
+        {
+            return;
+        }
+
+        try
+        {
+            DragMove();
+        }
+        catch (InvalidOperationException)
+        {
+            // マウスボタンが解放済みの場合は移動を開始しません。
+        }
+    }
+
+    private static bool IsInsideButton(DependencyObject? source)
+    {
+        DependencyObject? current = source;
+
+        while (current is not null)
+        {
+            if (current is Button)
+            {
+                return true;
+            }
+
+            current = VisualTreeHelper.GetParent(current);
+        }
+
+        return false;
     }
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
