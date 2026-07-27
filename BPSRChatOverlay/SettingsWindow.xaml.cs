@@ -27,6 +27,11 @@ public partial class SettingsWindow : Window
                 CultureInfo.CurrentCulture);
         TopMostCheckBox.IsChecked = currentConfig.TopMost;
         ClickThroughCheckBox.IsChecked = currentConfig.ClickThrough;
+        ShowWorldChatCheckBox.IsChecked = currentConfig.ShowWorldChat;
+        ShowChannelChatCheckBox.IsChecked = currentConfig.ShowChannelChat;
+        ShowPartyChatCheckBox.IsChecked = currentConfig.ShowPartyChat;
+        ShowGuildChatCheckBox.IsChecked = currentConfig.ShowGuildChat;
+        ChatFilterKeywordsTextBox.Text = currentConfig.ChatFilterKeywords;
     }
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
@@ -154,6 +159,11 @@ public partial class SettingsWindow : Window
             WindowTop = _currentConfig.WindowTop,
             WindowWidth = _currentConfig.WindowWidth,
             WindowHeight = _currentConfig.WindowHeight,
+            ShowWorldChat = ShowWorldChatCheckBox.IsChecked == true,
+            ShowChannelChat = ShowChannelChatCheckBox.IsChecked == true,
+            ShowPartyChat = ShowPartyChatCheckBox.IsChecked == true,
+            ShowGuildChat = ShowGuildChatCheckBox.IsChecked == true,
+            ChatFilterKeywords = ChatFilterKeywordsTextBox.Text.Trim(),
             TopMost = TopMostCheckBox.IsChecked == true
         };
 

@@ -34,5 +34,15 @@ public sealed class AppConfig
 
     public double WindowHeight { get; set; } = 600;
 
+    public bool ShowWorldChat { get; set; } = true;
+
+    public bool ShowChannelChat { get; set; } = true;
+
+    public bool ShowPartyChat { get; set; } = true;
+
+    public bool ShowGuildChat { get; set; } = true;
+
+    public string ChatFilterKeywords { get; set; } = string.Empty;
+
     public bool TopMost { get; set; } = true;
 }

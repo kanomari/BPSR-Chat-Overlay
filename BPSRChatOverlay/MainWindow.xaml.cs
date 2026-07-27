@@ -19,19 +19,31 @@ public partial class MainWindow : Window
     private const int MaxChatMessageCount = 500;
     private const int ClickThroughHotKeyId = 0x4250;
     private const int GwlExStyle = -20;
+    private const int WmNcHitTest = 0x0084;
     private const int WmHotKey = 0x0312;
+    private const int HtLeft = 10;
+    private const int HtRight = 11;
+    private const int HtTop = 12;
+    private const int HtTopLeft = 13;
+    private const int HtTopRight = 14;
+    private const int HtBottom = 15;
+    private const int HtBottomLeft = 16;
+    private const int HtBottomRight = 17;
     private const uint ModShift = 0x0004;
     private const uint ModControl = 0x0002;
     private const uint VkF10 = 0x79;
     private const uint MonitorDefaultToNearest = 0x00000002;
     private const uint DefaultDpi = 96;
+    private const double ResizeBorderWidthDip = 8.0;
     private const long WsExTransparent = 0x00000020L;
     private const long WsExLayered = 0x00080000L;
 
     private readonly NetCap _netCap = new();
+    private readonly List<ChatMessage> _chatHistory = [];
     private readonly DispatcherTimer _statusTimer;
     private readonly DispatcherTimer _windowPlacementSaveTimer;
     private AppConfig _appConfig = new();
+    private string[] _chatFilterKeywords = [];
     private IntPtr _windowHandle;
     private HwndSource? _windowSource;
     private bool _clickThroughHotKeyRegistered;
@@ -125,6 +137,8 @@ public partial class MainWindow : Window
 
     private void ApplyDisplaySettings(AppConfig config)
     {
+        _chatFilterKeywords = ParseChatFilterKeywords(
+            config.ChatFilterKeywords);
         ChatListBox.FontSize = Math.Clamp(config.FontSize, 8, 48);
         ChatBackgroundBorder.Opacity =
             Math.Clamp(config.BackgroundOpacity, 0.0, 1.0);
@@ -161,6 +175,7 @@ public partial class MainWindow : Window
             ConfigManager.Save(savedConfig);
             _appConfig = savedConfig;
             ApplyDisplaySettings(_appConfig);
+            RebuildDisplayedChatMessages();
         }
     }
 
@@ -228,8 +243,92 @@ public partial class MainWindow : Window
             SaveConfigSafely(_appConfig);
             handled = true;
         }
+        else if (message == WmNcHitTest &&
+                 !_appConfig.ClickThrough)
+        {
+            int hitTest = GetResizeHitTest(lParam);
+
+            if (hitTest != 0)
+            {
+                handled = true;
+                return new IntPtr(hitTest);
+            }
+        }
 
         return IntPtr.Zero;
+    }
+
+    private int GetResizeHitTest(IntPtr lParam)
+    {
+        if (!GetWindowRect(_windowHandle, out NativeRect windowRect))
+        {
+            return 0;
+        }
+
+        long screenPosition = lParam.ToInt64();
+        int x = unchecked((short)screenPosition);
+        int y = unchecked((short)(screenPosition >> 16));
+        int resizeBorderPixels = (int)Math.Ceiling(
+            ResizeBorderWidthDip * GetWindowDpi() / DefaultDpi);
+
+        bool isLeft = x >= windowRect.Left &&
+                      x < windowRect.Left + resizeBorderPixels;
+        bool isRight = x < windowRect.Right &&
+                       x >= windowRect.Right - resizeBorderPixels;
+        bool isTop = y >= windowRect.Top &&
+                     y < windowRect.Top + resizeBorderPixels;
+        bool isBottom = y < windowRect.Bottom &&
+                        y >= windowRect.Bottom - resizeBorderPixels;
+
+        if (isLeft && isTop)
+        {
+            return HtTopLeft;
+        }
+
+        if (isRight && isTop)
+        {
+            return HtTopRight;
+        }
+
+        if (isLeft && isBottom)
+        {
+            return HtBottomLeft;
+        }
+
+        if (isRight && isBottom)
+        {
+            return HtBottomRight;
+        }
+
+        if (isLeft)
+        {
+            return HtLeft;
+        }
+
+        if (isRight)
+        {
+            return HtRight;
+        }
+
+        if (isTop)
+        {
+            return HtTop;
+        }
+
+        return isBottom ? HtBottom : 0;
+    }
+
+    private uint GetWindowDpi()
+    {
+        try
+        {
+            uint dpi = GetDpiForWindow(_windowHandle);
+            return dpi == 0 ? DefaultDpi : dpi;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            return DefaultDpi;
+        }
     }
 
     private static void SaveConfigSafely(AppConfig config)
@@ -420,18 +519,99 @@ public partial class MainWindow : Window
          */
         Dispatcher.BeginInvoke(() =>
         {
-            ChatMessages.Add(message);
+            _chatHistory.Add(message);
 
-            while (ChatMessages.Count > MaxChatMessageCount)
+            while (_chatHistory.Count > MaxChatMessageCount)
             {
-                ChatMessages.RemoveAt(0);
+                ChatMessage oldestMessage = _chatHistory[0];
+                _chatHistory.RemoveAt(0);
+                ChatMessages.Remove(oldestMessage);
+            }
+
+            bool shouldDisplay = ShouldDisplayChatMessage(message);
+
+            if (shouldDisplay)
+            {
+                ChatMessages.Add(message);
             }
 
             ChatCountText.Text =
-                $"受信件数: {ChatMessages.Count:N0}";
+                $"受信件数: {_chatHistory.Count:N0}";
 
-            ChatListBox.ScrollIntoView(message);
+            if (shouldDisplay)
+            {
+                ChatListBox.ScrollIntoView(message);
+            }
         });
+    }
+
+    private bool ShouldDisplayChatMessage(ChatMessage message)
+    {
+        bool matchesChannelFilter = message.ChannelType switch
+        {
+            (int)Zproto.ChitChatChannelType.ChannelWorld =>
+                _appConfig.ShowWorldChat,
+            (int)Zproto.ChitChatChannelType.ChannelScene =>
+                _appConfig.ShowChannelChat,
+            (int)Zproto.ChitChatChannelType.ChannelTeam =>
+                _appConfig.ShowPartyChat,
+            (int)Zproto.ChitChatChannelType.ChannelUnion =>
+                _appConfig.ShowGuildChat,
+            _ => true
+        };
+
+        return matchesChannelFilter && MatchesKeywordFilter(message);
+    }
+
+    private bool MatchesKeywordFilter(ChatMessage message)
+    {
+        if (_chatFilterKeywords.Length == 0)
+        {
+            return true;
+        }
+
+        string senderName = message.SenderName ?? string.Empty;
+        string messageText = message.Message ?? string.Empty;
+
+        return _chatFilterKeywords.Any(keyword =>
+            senderName.Contains(keyword, StringComparison.OrdinalIgnoreCase) ||
+            messageText.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string[] ParseChatFilterKeywords(string? keywords)
+    {
+        if (string.IsNullOrWhiteSpace(keywords))
+        {
+            return [];
+        }
+
+        char[] separators = [' ', '\u3000', '\r', '\n', '\t'];
+
+        return keywords
+            .Split(
+                separators,
+                StringSplitOptions.RemoveEmptyEntries |
+                StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private void RebuildDisplayedChatMessages()
+    {
+        ChatMessages.Clear();
+
+        foreach (ChatMessage message in _chatHistory)
+        {
+            if (ShouldDisplayChatMessage(message))
+            {
+                ChatMessages.Add(message);
+            }
+        }
+
+        if (ChatMessages.Count > 0)
+        {
+            ChatListBox.ScrollIntoView(ChatMessages[^1]);
+        }
     }
 
     private void UpdateCaptureStatus(object? sender, EventArgs e)
@@ -540,6 +720,15 @@ public partial class MainWindow : Window
         IntPtr windowHandle,
         int id);
 
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(
+        IntPtr windowHandle,
+        out NativeRect rectangle);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetDpiForWindow(IntPtr windowHandle);
+
     [DllImport("user32.dll")]
     private static extern IntPtr MonitorFromPoint(
         NativePoint point,
@@ -557,6 +746,15 @@ public partial class MainWindow : Window
     {
         public int X;
         public int Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
     }
 
     private enum MonitorDpiType

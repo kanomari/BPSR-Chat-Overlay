@@ -9,5 +9,10 @@
   "WindowTop": null,
   "WindowWidth": 800,
   "WindowHeight": 600,
+  "ShowWorldChat": true,
+  "ShowChannelChat": true,
+  "ShowPartyChat": true,
+  "ShowGuildChat": true,
+  "ChatFilterKeywords": "",
   "TopMost": true
 }
