@@ -97,6 +97,7 @@
                 </Grid.RowDefinitions>
 
                 <Border
+                    x:Name="DebugPanel"
                     Padding="14"
                     Margin="0,0,0,16"
                     Background="#F7F7F7"
@@ -159,6 +160,7 @@
                             x:Name="ChatCountText"
                             DockPanel.Dock="Right"
                             Text="受信件数: 0"
+                            Visibility="{Binding Visibility, ElementName=DebugPanel}"
                             FontSize="14"
                             VerticalAlignment="Bottom"/>
                     </DockPanel>

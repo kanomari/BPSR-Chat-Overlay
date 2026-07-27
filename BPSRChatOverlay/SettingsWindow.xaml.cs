@@ -73,6 +73,8 @@ public partial class SettingsWindow : Window
             currentConfig.MentionKeywords ?? string.Empty;
         MentionSoundFilePathTextBox.Text =
             currentConfig.MentionSoundFilePath ?? string.Empty;
+        ShowDebugPanelCheckBox.IsChecked =
+            currentConfig.ShowDebugPanel;
         UpdateColorPreviews();
     }
 
@@ -220,6 +222,7 @@ public partial class SettingsWindow : Window
             MentionHighlightColor = _mentionHighlightColor,
             MentionSoundFilePath =
                 MentionSoundFilePathTextBox.Text.Trim(),
+            ShowDebugPanel = ShowDebugPanelCheckBox.IsChecked == true,
             TopMost = TopMostCheckBox.IsChecked == true
         };
 

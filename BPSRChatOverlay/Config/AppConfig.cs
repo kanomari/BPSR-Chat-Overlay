@@ -66,5 +66,7 @@ public sealed class AppConfig
 
     public string MentionSoundFilePath { get; set; } = string.Empty;
 
+    public bool ShowDebugPanel { get; set; } = false;
+
     public bool TopMost { get; set; } = true;
 }

@@ -25,5 +25,6 @@
   "MentionKeywords": "",
   "MentionHighlightColor": "#60FFD54F",
   "MentionSoundFilePath": "",
+  "ShowDebugPanel": false,
   "TopMost": true
 }

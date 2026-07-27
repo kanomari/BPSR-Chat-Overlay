@@ -159,6 +159,9 @@ public partial class MainWindow : Window
         MenuBackgroundBorder.Background = ChatColors.MenuBackground;
         MenuBackgroundBorder.Opacity =
             Math.Clamp(config.MenuBackgroundOpacity, 0.0, 1.0);
+        DebugPanel.Visibility = config.ShowDebugPanel
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         Topmost = config.TopMost;
 
         if (_windowHandle == IntPtr.Zero)

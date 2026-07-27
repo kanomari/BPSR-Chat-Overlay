@@ -20,6 +20,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -122,8 +123,14 @@
             Content="クリック透過を有効にする"
             Margin="120,16,0,0"/>
 
-        <GroupBox
+        <CheckBox
+            x:Name="ShowDebugPanelCheckBox"
             Grid.Row="6"
+            Content="通信確認パネルを表示する"
+            Margin="120,16,0,0"/>
+
+        <GroupBox
+            Grid.Row="7"
             Header="表示するチャット"
             Margin="0,16,0,0">
             <StackPanel Margin="12,8">
@@ -146,7 +153,7 @@
         </GroupBox>
 
         <StackPanel
-            Grid.Row="7"
+            Grid.Row="8"
             Margin="0,16,0,0">
             <TextBlock Text="キーワードフィルター"/>
             <TextBox
@@ -164,7 +171,7 @@
         </StackPanel>
 
         <GroupBox
-            Grid.Row="8"
+            Grid.Row="9"
             Header="色設定"
             Margin="0,16,0,0">
             <StackPanel Margin="12,8">
@@ -225,7 +232,7 @@
         </GroupBox>
 
         <GroupBox
-            Grid.Row="9"
+            Grid.Row="10"
             Header="メンション通知"
             Margin="0,16,0,0">
             <StackPanel Margin="12,8">
@@ -299,7 +306,7 @@
         </GroupBox>
 
         <StackPanel
-            Grid.Row="11"
+            Grid.Row="12"
             Orientation="Horizontal"
             HorizontalAlignment="Right">
             <Button
