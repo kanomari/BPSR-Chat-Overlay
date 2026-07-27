@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Threading;
 using BPSRChatOverlay.Config;
 using BPSRChatOverlay.Managers;
@@ -14,10 +17,21 @@ namespace BPSRChatOverlay;
 public partial class MainWindow : Window
 {
     private const int MaxChatMessageCount = 500;
+    private const int ClickThroughHotKeyId = 0x4250;
+    private const int GwlExStyle = -20;
+    private const int WmHotKey = 0x0312;
+    private const uint ModShift = 0x0004;
+    private const uint ModControl = 0x0002;
+    private const uint VkF10 = 0x79;
+    private const long WsExTransparent = 0x00000020L;
+    private const long WsExLayered = 0x00080000L;
 
     private readonly NetCap _netCap = new();
     private readonly DispatcherTimer _statusTimer;
     private AppConfig _appConfig = new();
+    private IntPtr _windowHandle;
+    private HwndSource? _windowSource;
+    private bool _clickThroughHotKeyRegistered;
 
     public ObservableCollection<ChatMessage> ChatMessages { get; } = new();
 
@@ -73,6 +87,28 @@ public partial class MainWindow : Window
         _statusTimer.Start();
     }
 
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+
+        _windowHandle = new WindowInteropHelper(this).Handle;
+        _windowSource = HwndSource.FromHwnd(_windowHandle);
+        _windowSource?.AddHook(WindowMessageHook);
+
+        _clickThroughHotKeyRegistered = RegisterHotKey(
+            _windowHandle,
+            ClickThroughHotKeyId,
+            ModControl | ModShift,
+            VkF10);
+
+        if (!_clickThroughHotKeyRegistered)
+        {
+            Debug.WriteLine("Failed to register Ctrl + Shift + F10.");
+        }
+
+        ApplyDisplaySettings(_appConfig);
+    }
+
     private void ApplyDisplaySettings(AppConfig config)
     {
         ChatListBox.FontSize = Math.Clamp(config.FontSize, 8, 48);
@@ -83,6 +119,19 @@ public partial class MainWindow : Window
         MenuBackgroundBorder.Opacity =
             Math.Clamp(config.MenuBackgroundOpacity, 0.0, 1.0);
         Topmost = config.TopMost;
+
+        if (_windowHandle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        if (config.ClickThrough && !_clickThroughHotKeyRegistered)
+        {
+            config.ClickThrough = false;
+            SaveConfigSafely(config);
+        }
+
+        ApplyClickThrough(config.ClickThrough);
     }
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
@@ -123,6 +172,62 @@ public partial class MainWindow : Window
     private void ExitButton_Click(object sender, RoutedEventArgs e)
     {
         Close();
+    }
+
+    private void ApplyClickThrough(bool enabled)
+    {
+        IntPtr currentStyle = GetWindowLongPtr(_windowHandle, GwlExStyle);
+        long updatedStyle = currentStyle.ToInt64();
+
+        if (enabled)
+        {
+            updatedStyle |= WsExTransparent | WsExLayered;
+        }
+        else
+        {
+            updatedStyle &= ~WsExTransparent;
+        }
+
+        SetWindowLongPtr(
+            _windowHandle,
+            GwlExStyle,
+            new IntPtr(updatedStyle));
+
+        Debug.WriteLine(
+            enabled
+                ? "ClickThrough enabled"
+                : "ClickThrough disabled");
+    }
+
+    private IntPtr WindowMessageHook(
+        IntPtr hwnd,
+        int message,
+        IntPtr wParam,
+        IntPtr lParam,
+        ref bool handled)
+    {
+        if (message == WmHotKey &&
+            wParam.ToInt32() == ClickThroughHotKeyId)
+        {
+            _appConfig.ClickThrough = !_appConfig.ClickThrough;
+            ApplyClickThrough(_appConfig.ClickThrough);
+            SaveConfigSafely(_appConfig);
+            handled = true;
+        }
+
+        return IntPtr.Zero;
+    }
+
+    private static void SaveConfigSafely(AppConfig config)
+    {
+        try
+        {
+            ConfigManager.Save(config);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to save config.json: {ex}");
+        }
     }
 
     private void OnChatReceived(ChatMessage message)
@@ -171,8 +276,82 @@ public partial class MainWindow : Window
 
         ChatCaptureManager.ChatReceived -= OnChatReceived;
 
+        if (_clickThroughHotKeyRegistered)
+        {
+            UnregisterHotKey(_windowHandle, ClickThroughHotKeyId);
+            _clickThroughHotKeyRegistered = false;
+        }
+
+        _windowSource?.RemoveHook(WindowMessageHook);
+
         _netCap.Stop();
 
         base.OnClosed(e);
     }
+
+    private static IntPtr GetWindowLongPtr(IntPtr windowHandle, int index)
+    {
+        return IntPtr.Size == 8
+            ? GetWindowLongPtr64(windowHandle, index)
+            : new IntPtr(GetWindowLong32(windowHandle, index));
+    }
+
+    private static IntPtr SetWindowLongPtr(
+        IntPtr windowHandle,
+        int index,
+        IntPtr newValue)
+    {
+        return IntPtr.Size == 8
+            ? SetWindowLongPtr64(windowHandle, index, newValue)
+            : new IntPtr(
+                SetWindowLong32(windowHandle, index, newValue.ToInt32()));
+    }
+
+    [DllImport(
+        "user32.dll",
+        EntryPoint = "GetWindowLongPtrW",
+        SetLastError = true)]
+    private static extern IntPtr GetWindowLongPtr64(
+        IntPtr windowHandle,
+        int index);
+
+    [DllImport(
+        "user32.dll",
+        EntryPoint = "GetWindowLongW",
+        SetLastError = true)]
+    private static extern int GetWindowLong32(
+        IntPtr windowHandle,
+        int index);
+
+    [DllImport(
+        "user32.dll",
+        EntryPoint = "SetWindowLongPtrW",
+        SetLastError = true)]
+    private static extern IntPtr SetWindowLongPtr64(
+        IntPtr windowHandle,
+        int index,
+        IntPtr newValue);
+
+    [DllImport(
+        "user32.dll",
+        EntryPoint = "SetWindowLongW",
+        SetLastError = true)]
+    private static extern int SetWindowLong32(
+        IntPtr windowHandle,
+        int index,
+        int newValue);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool RegisterHotKey(
+        IntPtr windowHandle,
+        int id,
+        uint modifiers,
+        uint virtualKey);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool UnregisterHotKey(
+        IntPtr windowHandle,
+        int id);
 }

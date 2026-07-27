@@ -4,5 +4,6 @@
   "BackgroundOpacity": 0.7,
   "TextOpacity": 1.0,
   "MenuBackgroundOpacity": 0.9,
+  "ClickThrough": false,
   "TopMost": true
 }

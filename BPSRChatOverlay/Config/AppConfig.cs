@@ -24,5 +24,7 @@ public sealed class AppConfig
 
     public double MenuBackgroundOpacity { get; set; } = 0.9;
 
+    public bool ClickThrough { get; set; } = false;
+
     public bool TopMost { get; set; } = true;
 }

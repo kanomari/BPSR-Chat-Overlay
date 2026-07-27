@@ -26,6 +26,7 @@ public partial class SettingsWindow : Window
             currentConfig.MenuBackgroundOpacity.ToString(
                 CultureInfo.CurrentCulture);
         TopMostCheckBox.IsChecked = currentConfig.TopMost;
+        ClickThroughCheckBox.IsChecked = currentConfig.ClickThrough;
     }
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
@@ -148,6 +149,7 @@ public partial class SettingsWindow : Window
             BackgroundOpacity = backgroundOpacity,
             TextOpacity = textOpacity,
             MenuBackgroundOpacity = menuBackgroundOpacity,
+            ClickThrough = ClickThroughCheckBox.IsChecked == true,
             TopMost = TopMostCheckBox.IsChecked == true
         };
 
