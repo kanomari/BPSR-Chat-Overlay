@@ -1,6 +1,7 @@
 ﻿<Window x:Class="BPSRChatOverlay.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:system="clr-namespace:System;assembly=mscorlib"
         xmlns:converters="clr-namespace:BPSRChatOverlay.Converters"
         Title="BPSR Chat Overlay - 通信確認"
         Width="800"
@@ -10,6 +11,7 @@
     <Window.Resources>
         <converters:ChannelNameConverter x:Key="ChannelNameConverter"/>
         <converters:ChannelBrushConverter x:Key="ChannelBrushConverter"/>
+        <system:Double x:Key="ChatTextOpacity">1.0</system:Double>
     </Window.Resources>
 
     <Grid Margin="20">
@@ -100,7 +102,14 @@
             </DockPanel>
 
             <Border
+                x:Name="ChatBackgroundBorder"
                 Grid.Row="1"
+                Background="Black"
+                CornerRadius="6"/>
+
+            <Border
+                Grid.Row="1"
+                Background="Transparent"
                 BorderBrush="#808080"
                 BorderThickness="1"
                 CornerRadius="6">
@@ -108,13 +117,16 @@
                 <ListBox
                     x:Name="ChatListBox"
                     ItemsSource="{Binding ChatMessages}"
+                    Background="Transparent"
                     BorderThickness="0"
                     FontSize="16"
                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
 
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <Grid Margin="6,4">
+                            <Grid
+                                Margin="6,4"
+                                Opacity="{DynamicResource ChatTextOpacity}">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="75"/>
                                     <ColumnDefinition Width="70"/>
