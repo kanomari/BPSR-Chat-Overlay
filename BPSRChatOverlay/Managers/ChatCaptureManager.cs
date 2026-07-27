@@ -27,9 +27,6 @@ public static class ChatCaptureManager
             Timestamp = DateTime.Now
         };
 
-        Console.WriteLine(
-            $"[{message.ChannelType}] {message.SenderName}: {message.Message}");
-
         ChatReceived?.Invoke(message);
     }
 }
