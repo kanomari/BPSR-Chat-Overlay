@@ -6,6 +6,8 @@
         Title="BPSR Chat Overlay - 通信確認"
         Width="800"
         Height="600"
+        MinWidth="520"
+        MinHeight="360"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"

@@ -23,15 +23,19 @@ public partial class MainWindow : Window
     private const uint ModShift = 0x0004;
     private const uint ModControl = 0x0002;
     private const uint VkF10 = 0x79;
+    private const uint MonitorDefaultToNearest = 0x00000002;
+    private const uint DefaultDpi = 96;
     private const long WsExTransparent = 0x00000020L;
     private const long WsExLayered = 0x00080000L;
 
     private readonly NetCap _netCap = new();
     private readonly DispatcherTimer _statusTimer;
+    private readonly DispatcherTimer _windowPlacementSaveTimer;
     private AppConfig _appConfig = new();
     private IntPtr _windowHandle;
     private HwndSource? _windowSource;
     private bool _clickThroughHotKeyRegistered;
+    private bool _windowPlacementTrackingEnabled;
 
     public ObservableCollection<ChatMessage> ChatMessages { get; } = new();
 
@@ -40,6 +44,14 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         DataContext = this;
+
+        _windowPlacementSaveTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(500)
+        };
+        _windowPlacementSaveTimer.Tick += WindowPlacementSaveTimer_Tick;
+        LocationChanged += MainWindow_LocationChanged;
+        SizeChanged += MainWindow_SizeChanged;
 
         /*
          * NetCapの解析処理はバックグラウンドスレッドで動きます。
@@ -53,6 +65,7 @@ public partial class MainWindow : Window
 
             _appConfig = ConfigManager.Load();
 
+            RestoreWindowPlacement(_appConfig);
             ApplyDisplaySettings(_appConfig);
 
             var netCapConfig = new NetCapConfig
@@ -107,6 +120,7 @@ public partial class MainWindow : Window
         }
 
         ApplyDisplaySettings(_appConfig);
+        _windowPlacementTrackingEnabled = true;
     }
 
     private void ApplyDisplaySettings(AppConfig config)
@@ -230,6 +244,173 @@ public partial class MainWindow : Window
         }
     }
 
+    private void RestoreWindowPlacement(AppConfig config)
+    {
+        if (IsValidWindowSize(config.WindowWidth, config.WindowHeight))
+        {
+            Width = config.WindowWidth;
+            Height = config.WindowHeight;
+        }
+
+        if (config.WindowLeft is not { } left ||
+            config.WindowTop is not { } top ||
+            !double.IsFinite(left) ||
+            !double.IsFinite(top) ||
+            !IsWindowAreaVisible(left, top, Width, Height))
+        {
+            return;
+        }
+
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        Left = left;
+        Top = top;
+    }
+
+    private bool IsValidWindowSize(double width, double height)
+    {
+        return double.IsFinite(width) &&
+               double.IsFinite(height) &&
+               width > 0 &&
+               height > 0 &&
+               width >= MinWidth &&
+               height >= MinHeight;
+    }
+
+    private static bool IsWindowAreaVisible(
+        double left,
+        double top,
+        double width,
+        double height)
+    {
+        double right = left + width;
+        double bottom = top + height;
+
+        if (!double.IsFinite(right) || !double.IsFinite(bottom))
+        {
+            return false;
+        }
+
+        return System.Windows.Forms.Screen.AllScreens.Any(screen =>
+        {
+            var area = screen.WorkingArea;
+            GetMonitorDpi(area, out uint dpiX, out uint dpiY);
+
+            double areaLeft = area.Left * DefaultDpi / dpiX;
+            double areaTop = area.Top * DefaultDpi / dpiY;
+            double areaWidth = area.Width * DefaultDpi / dpiX;
+            double areaHeight = area.Height * DefaultDpi / dpiY;
+            double areaRight = areaLeft + areaWidth;
+            double areaBottom = areaTop + areaHeight;
+
+            return left < areaRight &&
+                   right > areaLeft &&
+                   top < areaBottom &&
+                   bottom > areaTop;
+        });
+    }
+
+    private static void GetMonitorDpi(
+        System.Drawing.Rectangle workingArea,
+        out uint dpiX,
+        out uint dpiY)
+    {
+        dpiX = DefaultDpi;
+        dpiY = DefaultDpi;
+
+        try
+        {
+            var monitorPoint = new NativePoint
+            {
+                X = workingArea.Left + (workingArea.Width / 2),
+                Y = workingArea.Top + (workingArea.Height / 2)
+            };
+            IntPtr monitor = MonitorFromPoint(
+                monitorPoint,
+                MonitorDefaultToNearest);
+
+            if (monitor == IntPtr.Zero ||
+                GetDpiForMonitor(
+                    monitor,
+                    MonitorDpiType.Effective,
+                    out uint monitorDpiX,
+                    out uint monitorDpiY) != 0 ||
+                monitorDpiX == 0 ||
+                monitorDpiY == 0)
+            {
+                return;
+            }
+
+            dpiX = monitorDpiX;
+            dpiY = monitorDpiY;
+        }
+        catch (DllNotFoundException)
+        {
+            // DPI取得APIを利用できない環境では96 DPIとして判定します。
+        }
+        catch (EntryPointNotFoundException)
+        {
+            // DPI取得APIを利用できない環境では96 DPIとして判定します。
+        }
+    }
+
+    private void MainWindow_LocationChanged(object? sender, EventArgs e)
+    {
+        ScheduleWindowPlacementSave();
+    }
+
+    private void MainWindow_SizeChanged(
+        object sender,
+        SizeChangedEventArgs e)
+    {
+        ScheduleWindowPlacementSave();
+    }
+
+    private void ScheduleWindowPlacementSave()
+    {
+        if (!_windowPlacementTrackingEnabled ||
+            WindowState == WindowState.Minimized)
+        {
+            return;
+        }
+
+        _windowPlacementSaveTimer.Stop();
+        _windowPlacementSaveTimer.Start();
+    }
+
+    private void WindowPlacementSaveTimer_Tick(
+        object? sender,
+        EventArgs e)
+    {
+        _windowPlacementSaveTimer.Stop();
+        SaveWindowPlacement();
+    }
+
+    private void SaveWindowPlacement()
+    {
+        if (WindowState == WindowState.Minimized)
+        {
+            return;
+        }
+
+        Rect bounds = WindowState == WindowState.Normal
+            ? new Rect(Left, Top, ActualWidth, ActualHeight)
+            : RestoreBounds;
+
+        if (!IsValidWindowSize(bounds.Width, bounds.Height) ||
+            !double.IsFinite(bounds.Left) ||
+            !double.IsFinite(bounds.Top))
+        {
+            return;
+        }
+
+        _appConfig.WindowLeft = bounds.Left;
+        _appConfig.WindowTop = bounds.Top;
+        _appConfig.WindowWidth = bounds.Width;
+        _appConfig.WindowHeight = bounds.Height;
+
+        SaveConfigSafely(_appConfig);
+    }
+
     private void OnChatReceived(ChatMessage message)
     {
         /*
@@ -272,9 +453,8 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
-        _statusTimer.Stop();
-
-        ChatCaptureManager.ChatReceived -= OnChatReceived;
+        SaveWindowPlacement();
+        _windowPlacementTrackingEnabled = false;
 
         if (_clickThroughHotKeyRegistered)
         {
@@ -283,6 +463,11 @@ public partial class MainWindow : Window
         }
 
         _windowSource?.RemoveHook(WindowMessageHook);
+
+        _windowPlacementSaveTimer.Stop();
+        _statusTimer.Stop();
+
+        ChatCaptureManager.ChatReceived -= OnChatReceived;
 
         _netCap.Stop();
 
@@ -354,4 +539,28 @@ public partial class MainWindow : Window
     private static extern bool UnregisterHotKey(
         IntPtr windowHandle,
         int id);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromPoint(
+        NativePoint point,
+        uint flags);
+
+    [DllImport("shcore.dll")]
+    private static extern int GetDpiForMonitor(
+        IntPtr monitor,
+        MonitorDpiType dpiType,
+        out uint dpiX,
+        out uint dpiY);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativePoint
+    {
+        public int X;
+        public int Y;
+    }
+
+    private enum MonitorDpiType
+    {
+        Effective = 0
+    }
 }

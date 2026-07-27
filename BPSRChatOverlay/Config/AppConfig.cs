@@ -26,5 +26,13 @@ public sealed class AppConfig
 
     public bool ClickThrough { get; set; } = false;
 
+    public double? WindowLeft { get; set; }
+
+    public double? WindowTop { get; set; }
+
+    public double WindowWidth { get; set; } = 800;
+
+    public double WindowHeight { get; set; } = 600;
+
     public bool TopMost { get; set; } = true;
 }

@@ -5,5 +5,9 @@
   "TextOpacity": 1.0,
   "MenuBackgroundOpacity": 0.9,
   "ClickThrough": false,
+  "WindowLeft": null,
+  "WindowTop": null,
+  "WindowWidth": 800,
+  "WindowHeight": 600,
   "TopMost": true
 }

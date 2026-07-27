@@ -150,6 +150,10 @@ public partial class SettingsWindow : Window
             TextOpacity = textOpacity,
             MenuBackgroundOpacity = menuBackgroundOpacity,
             ClickThrough = ClickThroughCheckBox.IsChecked == true,
+            WindowLeft = _currentConfig.WindowLeft,
+            WindowTop = _currentConfig.WindowTop,
+            WindowWidth = _currentConfig.WindowWidth,
+            WindowHeight = _currentConfig.WindowHeight,
             TopMost = TopMostCheckBox.IsChecked == true
         };
 
