@@ -4,7 +4,11 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using BPSRChatOverlay.Config;
+using BPSRChatOverlay.Models;
 using BPSRChatOverlay.UIResources;
+using Serilog;
+using SharpPcap;
+using SharpPcap.LibPcap;
 
 namespace BPSRChatOverlay;
 
@@ -12,6 +16,7 @@ public partial class SettingsWindow : Window
 {
     private readonly AppConfig _currentConfig;
     private readonly MentionSoundPlayer _mentionTestSoundPlayer = new();
+    private readonly List<CaptureDeviceOption> _captureDeviceOptions = [];
     private string _worldChatTextColor;
     private string _channelChatTextColor;
     private string _partyChatTextColor;
@@ -27,6 +32,8 @@ public partial class SettingsWindow : Window
         InitializeComponent();
 
         _currentConfig = currentConfig;
+        CaptureDeviceComboBox.ItemsSource = _captureDeviceOptions;
+        LoadCaptureDevices(currentConfig.CaptureDeviceName, true);
         _worldChatTextColor = NormalizeColorText(
             currentConfig.WorldChatTextColor,
             ChatColors.DefaultChatTextColor);
@@ -192,7 +199,9 @@ public partial class SettingsWindow : Window
 
         SavedConfig = new AppConfig
         {
-            CaptureDeviceName = _currentConfig.CaptureDeviceName,
+            CaptureDeviceName =
+                (CaptureDeviceComboBox.SelectedItem as CaptureDeviceOption)?.Name
+                ?? _currentConfig.CaptureDeviceName,
             ExeNames = [.. _currentConfig.ExeNames],
             FontSize = fontSize,
             BackgroundOpacity = backgroundOpacity,
@@ -227,6 +236,181 @@ public partial class SettingsWindow : Window
         };
 
         DialogResult = true;
+    }
+
+    private void ReloadCaptureDevicesButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        string? selectedName =
+            (CaptureDeviceComboBox.SelectedItem as CaptureDeviceOption)?.Name;
+
+        LoadCaptureDevices(
+            selectedName ?? _currentConfig.CaptureDeviceName,
+            false);
+    }
+
+    private void LoadCaptureDevices(
+        string? preferredDeviceName,
+        bool isInitialLoad)
+    {
+        try
+        {
+            List<CaptureDeviceOption> loadedOptions =
+                CaptureDeviceList.Instance
+                    .Select(CreateCaptureDeviceOption)
+                    .Where(option => !string.IsNullOrWhiteSpace(option.Name))
+                    .ToList();
+
+            EnsureUniqueDisplayNames(loadedOptions);
+
+            _captureDeviceOptions.Clear();
+            _captureDeviceOptions.AddRange(loadedOptions);
+            CaptureDeviceComboBox.Items.Refresh();
+
+            if (_captureDeviceOptions.Count == 0)
+            {
+                CaptureDeviceComboBox.SelectedItem = null;
+                ShowCaptureDeviceStatus(
+                    "利用可能なネットワークカードが見つかりません。");
+                return;
+            }
+
+            CaptureDeviceOption? selectedOption =
+                FindCaptureDevice(preferredDeviceName);
+
+            if (selectedOption is null &&
+                !string.Equals(
+                    preferredDeviceName,
+                    _currentConfig.CaptureDeviceName,
+                    StringComparison.Ordinal))
+            {
+                selectedOption =
+                    FindCaptureDevice(_currentConfig.CaptureDeviceName);
+            }
+
+            CaptureDeviceComboBox.SelectedItem =
+                selectedOption ?? _captureDeviceOptions[0];
+
+            bool savedDeviceMissing =
+                !string.IsNullOrWhiteSpace(_currentConfig.CaptureDeviceName) &&
+                FindCaptureDevice(_currentConfig.CaptureDeviceName) is null;
+
+            if (savedDeviceMissing)
+            {
+                ShowCaptureDeviceStatus(
+                    "保存されているネットワークカードが見つかりません。別のカードを選択してください。");
+            }
+            else
+            {
+                HideCaptureDeviceStatus();
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error loading capture devices");
+
+            if (isInitialLoad || _captureDeviceOptions.Count == 0)
+            {
+                CaptureDeviceComboBox.SelectedItem = null;
+            }
+
+            ShowCaptureDeviceStatus(
+                "ネットワークカード一覧を取得できませんでした。Npcapが導入されているか確認してください。");
+        }
+    }
+
+    private static CaptureDeviceOption CreateCaptureDeviceOption(
+        ICaptureDevice device)
+    {
+        string name = device.Name ?? string.Empty;
+        string? description = NormalizeDeviceText(device.Description);
+        string? friendlyName = device is LibPcapLiveDevice liveDevice
+            ? NormalizeDeviceText(liveDevice.Interface?.FriendlyName)
+            : null;
+        string displayName = CreateDisplayName(
+            name,
+            friendlyName,
+            description);
+
+        return new CaptureDeviceOption(
+            name,
+            friendlyName,
+            description,
+            displayName);
+    }
+
+    private static string CreateDisplayName(
+        string name,
+        string? friendlyName,
+        string? description)
+    {
+        if (friendlyName is not null &&
+            description is not null &&
+            !string.Equals(
+                friendlyName,
+                description,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return $"{friendlyName} — {description}";
+        }
+
+        return friendlyName ?? description ?? name;
+    }
+
+    private static void EnsureUniqueDisplayNames(
+        List<CaptureDeviceOption> options)
+    {
+        HashSet<string> duplicateDisplayNames = options
+            .GroupBy(
+                option => option.DisplayName,
+                StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        for (int index = 0; index < options.Count; index++)
+        {
+            CaptureDeviceOption option = options[index];
+            if (duplicateDisplayNames.Contains(option.DisplayName))
+            {
+                options[index] = option with
+                {
+                    DisplayName = $"{option.DisplayName} — {option.Name}"
+                };
+            }
+        }
+    }
+
+    private CaptureDeviceOption? FindCaptureDevice(string? deviceName)
+    {
+        if (string.IsNullOrWhiteSpace(deviceName))
+        {
+            return null;
+        }
+
+        return _captureDeviceOptions.FirstOrDefault(option =>
+            string.Equals(
+                option.Name,
+                deviceName,
+                StringComparison.Ordinal));
+    }
+
+    private static string? NormalizeDeviceText(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private void ShowCaptureDeviceStatus(string message)
+    {
+        CaptureDeviceStatusText.Text = message;
+        CaptureDeviceStatusText.Visibility = Visibility.Visible;
+    }
+
+    private void HideCaptureDeviceStatus()
+    {
+        CaptureDeviceStatusText.Text = string.Empty;
+        CaptureDeviceStatusText.Visibility = Visibility.Collapsed;
     }
 
     private void CancelButton_Click(object sender, RoutedEventArgs e)

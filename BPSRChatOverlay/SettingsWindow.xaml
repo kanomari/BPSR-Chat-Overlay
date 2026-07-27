@@ -25,7 +25,38 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Grid>
+        <StackPanel>
+            <GroupBox Header="ネットワーク">
+                <StackPanel Margin="12,8">
+                    <TextBlock Text="ネットワークカード"/>
+                    <DockPanel Margin="0,6,0,0">
+                        <Button
+                            DockPanel.Dock="Right"
+                            Content="再読み込み"
+                            Margin="8,0,0,0"
+                            Padding="12,4"
+                            Click="ReloadCaptureDevicesButton_Click"/>
+                        <ComboBox
+                            x:Name="CaptureDeviceComboBox"
+                            DisplayMemberPath="DisplayName"
+                            MinWidth="260"
+                            HorizontalContentAlignment="Stretch"/>
+                    </DockPanel>
+                    <TextBlock
+                        x:Name="CaptureDeviceStatusText"
+                        Margin="0,6,0,0"
+                        Foreground="#B04040"
+                        TextWrapping="Wrap"
+                        Visibility="Collapsed"/>
+                    <TextBlock
+                        Text="変更は次回起動時に反映されます。"
+                        Margin="0,6,0,0"
+                        Foreground="#606060"
+                        FontSize="12"/>
+                </StackPanel>
+            </GroupBox>
+
+            <Grid Margin="0,16,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="120"/>
                 <ColumnDefinition Width="*"/>
@@ -40,7 +71,8 @@
                 Grid.Column="1"
                 Width="100"
                 HorizontalAlignment="Left"/>
-        </Grid>
+            </Grid>
+        </StackPanel>
 
         <Grid Grid.Row="1" Margin="0,16,0,0">
             <Grid.ColumnDefinitions>
