@@ -90,11 +90,6 @@ public class NetCap
         NotifyHandlers.Add(new NotifyId(serviceId, methodId), handler);
     }
 
-    public void RegisterWorldNotifyHandler(ServiceMethods.WorldNtf methodId, Action<ReadOnlySpan<byte>, ExtraPacketData> handler)
-    {
-        NotifyHandlers.Add(new NotifyId((ulong)EServiceId.WorldNtf, (uint)methodId), handler);
-    }
-
     public void RegisterProxyHandler(uint serviceId, uint methodId, Action<ReadOnlySpan<byte>, uint, ExtraPacketData> handler)
     {
         ProxyHandlers.Add(new ProxyId(serviceId, methodId), handler);
