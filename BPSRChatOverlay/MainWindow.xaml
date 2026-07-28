@@ -75,6 +75,9 @@
         <GridLength x:Key="TitleBarRowHeight">20</GridLength>
         <GridLength x:Key="TimeColumnWidth">40</GridLength>
         <GridLength x:Key="SenderNameColumnWidth">108</GridLength>
+        <system:Double x:Key="ChatColorBandWidth">3</system:Double>
+        <GridLength x:Key="LeftChatColorBandWidth">3</GridLength>
+        <GridLength x:Key="RightChatColorBandWidth">0</GridLength>
         <system:Double x:Key="TitleButtonWidth">28</system:Double>
         <system:Double x:Key="TimestampFontSize">11.5</system:Double>
 
@@ -403,50 +406,70 @@
                                 <DataTemplate>
                                     <Border
                                         Margin="{StaticResource ChatRowMargin}"
-                                        Padding="{StaticResource ChatRowPadding}"
                                         CornerRadius="2"
                                         Background="{Binding IsMention, Converter={StaticResource MentionHighlightConverter}}">
-                                    <Grid Opacity="{DynamicResource ChatTextOpacity}">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="{DynamicResource TimeColumnWidth}"/>
-                                            <ColumnDefinition Width="34"/>
-                                            <ColumnDefinition Width="{DynamicResource SenderNameColumnWidth}"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="{DynamicResource LeftChatColorBandWidth}"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="{DynamicResource RightChatColorBandWidth}"/>
+                                            </Grid.ColumnDefinitions>
 
-                                        <TextBlock
-                                            Grid.Column="0"
-                                            Text="{Binding Timestamp, StringFormat={}{0:HH:mm}}"
-                                            Foreground="{StaticResource TimestampBrush}"
-                                            FontSize="{StaticResource TimestampFontSize}"
-                                            VerticalAlignment="Center"/>
+                                            <Border
+                                                Grid.Column="0"
+                                                IsHitTestVisible="False"
+                                                Background="{Binding ChannelType, Converter={StaticResource ChannelBrushConverter}, ConverterParameter=ChatText}"/>
 
-                                        <TextBlock
-                                            Grid.Column="1"
-                                            Text="{Binding ChannelType, Converter={StaticResource ChannelNameConverter}}"
-                                            Foreground="{Binding ChannelType, Converter={StaticResource ChannelBrushConverter}}"
-                                            FontSize="12"
-                                            FontWeight="Normal"
-                                            VerticalAlignment="Center"/>
+                                            <Grid
+                                                Grid.Column="1"
+                                                Margin="{StaticResource ChatRowPadding}"
+                                                Opacity="{DynamicResource ChatTextOpacity}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="{DynamicResource TimeColumnWidth}"/>
+                                                    <ColumnDefinition Width="34"/>
+                                                    <ColumnDefinition Width="{DynamicResource SenderNameColumnWidth}"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
 
-                                        <TextBlock
-                                            Grid.Column="2"
-                                            Text="{Binding SenderName}"
-                                            Foreground="{Binding ChannelType, Converter={StaticResource ChannelBrushConverter}, ConverterParameter=ChatText}"
-                                            FontWeight="SemiBold"
-                                            TextTrimming="CharacterEllipsis"
-                                            TextWrapping="NoWrap"
-                                            Margin="3,0,6,0"
-                                            VerticalAlignment="Center"/>
+                                                <TextBlock
+                                                    Grid.Column="0"
+                                                    Text="{Binding Timestamp, StringFormat={}{0:HH:mm}}"
+                                                    Foreground="{StaticResource TimestampBrush}"
+                                                    FontSize="{StaticResource TimestampFontSize}"
+                                                    VerticalAlignment="Center"/>
 
-                                        <TextBlock
-                                            Grid.Column="3"
-                                            Text="{Binding Message}"
-                                            Foreground="{Binding ChannelType, Converter={StaticResource ChannelBrushConverter}, ConverterParameter=ChatText}"
-                                            FontWeight="Normal"
-                                            TextWrapping="Wrap"
-                                            VerticalAlignment="Top"/>
-                                    </Grid>
+                                                <TextBlock
+                                                    Grid.Column="1"
+                                                    Text="{Binding ChannelType, Converter={StaticResource ChannelNameConverter}}"
+                                                    Foreground="{Binding ChannelType, Converter={StaticResource ChannelBrushConverter}}"
+                                                    FontSize="12"
+                                                    FontWeight="Normal"
+                                                    VerticalAlignment="Center"/>
+
+                                                <TextBlock
+                                                    Grid.Column="2"
+                                                    Text="{Binding SenderName}"
+                                                    Foreground="{Binding ChannelType, Converter={StaticResource ChannelBrushConverter}, ConverterParameter=ChatText}"
+                                                    FontWeight="SemiBold"
+                                                    TextTrimming="CharacterEllipsis"
+                                                    TextWrapping="NoWrap"
+                                                    Margin="3,0,6,0"
+                                                    VerticalAlignment="Center"/>
+
+                                                <TextBlock
+                                                    Grid.Column="3"
+                                                    Text="{Binding Message}"
+                                                    Foreground="{Binding ChannelType, Converter={StaticResource ChannelBrushConverter}, ConverterParameter=ChatText}"
+                                                    FontWeight="Normal"
+                                                    TextWrapping="Wrap"
+                                                    VerticalAlignment="Top"/>
+                                            </Grid>
+
+                                            <Border
+                                                Grid.Column="2"
+                                                IsHitTestVisible="False"
+                                                Background="{Binding ChannelType, Converter={StaticResource ChannelBrushConverter}, ConverterParameter=ChatText}"/>
+                                        </Grid>
                                     </Border>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>

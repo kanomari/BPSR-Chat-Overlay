@@ -10,6 +10,8 @@
   "HighlightNewChatRows": true,
   "ShowChatSeparators": true,
   "ShowChatZebraStripes": true,
+  "ShowChatColorBand": true,
+  "ChatColorBandPosition": "Left",
   "WindowLeft": null,
   "WindowTop": null,
   "WindowWidth": 800,

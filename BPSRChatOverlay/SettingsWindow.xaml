@@ -1,6 +1,7 @@
 <Window x:Class="BPSRChatOverlay.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:config="clr-namespace:BPSRChatOverlay.Config"
         Title="設定"
         Width="840"
         Height="580"
@@ -659,6 +660,27 @@
                                               Content="チャット間に区切り線を表示する"/>
                                     <CheckBox x:Name="ShowChatZebraStripesCheckBox"
                                               Content="チャットの背景を交互に表示する"/>
+                                    <CheckBox x:Name="ShowChatColorBandCheckBox"
+                                              Content="色帯を表示する"/>
+                                    <Grid Margin="0,4,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="210"/>
+                                            <ColumnDefinition Width="160"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock VerticalAlignment="Center"
+                                                   Text="色帯の位置"/>
+                                        <ComboBox x:Name="ChatColorBandPositionComboBox"
+                                                  Grid.Column="1"
+                                                  IsEnabled="{Binding IsChecked,
+                                                                      ElementName=ShowChatColorBandCheckBox}">
+                                            <ComboBoxItem
+                                                Content="左"
+                                                Tag="{x:Static config:AppConfig.ChatColorBandPositionLeft}"/>
+                                            <ComboBoxItem
+                                                Content="右"
+                                                Tag="{x:Static config:AppConfig.ChatColorBandPositionRight}"/>
+                                        </ComboBox>
+                                    </Grid>
                                     <CheckBox x:Name="ShowDebugPanelCheckBox"
                                               Content="【Debug用】通信確認パネルを表示する"/>
                                 </StackPanel>

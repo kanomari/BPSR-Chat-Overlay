@@ -165,6 +165,20 @@ public partial class MainWindow : Window
             config.SenderNameColumnWidth,
             AppConfig.MinSenderNameColumnWidth,
             AppConfig.MaxSenderNameColumnWidth));
+        string colorBandPosition =
+            AppConfig.NormalizeChatColorBandPosition(
+                config.ChatColorBandPosition);
+        double colorBandWidth = (double)Resources["ChatColorBandWidth"];
+        Resources["LeftChatColorBandWidth"] = new GridLength(
+            config.ShowChatColorBand &&
+            colorBandPosition == AppConfig.ChatColorBandPositionLeft
+                ? colorBandWidth
+                : 0);
+        Resources["RightChatColorBandWidth"] = new GridLength(
+            config.ShowChatColorBand &&
+            colorBandPosition == AppConfig.ChatColorBandPositionRight
+                ? colorBandWidth
+                : 0);
         ChatListBox.Tag = config;
         Resources["ChatZebraStripeBrush"] = config.ShowChatZebraStripes
             ? Resources["ChatZebraStripeEnabledBrush"]

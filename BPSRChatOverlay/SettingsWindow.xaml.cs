@@ -83,6 +83,14 @@ public partial class SettingsWindow : Window
             currentConfig.ShowChatSeparators;
         ShowChatZebraStripesCheckBox.IsChecked =
             currentConfig.ShowChatZebraStripes;
+        ShowChatColorBandCheckBox.IsChecked =
+            currentConfig.ShowChatColorBand;
+        ChatColorBandPositionComboBox.SelectedIndex =
+            AppConfig.NormalizeChatColorBandPosition(
+                currentConfig.ChatColorBandPosition) ==
+            AppConfig.ChatColorBandPositionRight
+                ? 1
+                : 0;
         ShowWorldChatCheckBox.IsChecked = currentConfig.ShowWorldChat;
         ShowChannelChatCheckBox.IsChecked = currentConfig.ShowChannelChat;
         ShowPartyChatCheckBox.IsChecked = currentConfig.ShowPartyChat;
@@ -333,6 +341,12 @@ public partial class SettingsWindow : Window
                 ShowChatSeparatorsCheckBox.IsChecked == true,
             ShowChatZebraStripes =
                 ShowChatZebraStripesCheckBox.IsChecked == true,
+            ShowChatColorBand =
+                ShowChatColorBandCheckBox.IsChecked == true,
+            ChatColorBandPosition =
+                (ChatColorBandPositionComboBox.SelectedItem as ComboBoxItem)
+                    ?.Tag as string
+                ?? AppConfig.ChatColorBandPositionLeft,
             WindowLeft = _currentConfig.WindowLeft,
             WindowTop = _currentConfig.WindowTop,
             WindowWidth = _currentConfig.WindowWidth,

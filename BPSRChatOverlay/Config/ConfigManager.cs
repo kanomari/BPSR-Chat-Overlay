@@ -30,6 +30,9 @@ public static class ConfigManager
             config.SenderNameColumnWidth,
             AppConfig.MinSenderNameColumnWidth,
             AppConfig.MaxSenderNameColumnWidth);
+        config.ChatColorBandPosition =
+            AppConfig.NormalizeChatColorBandPosition(
+                config.ChatColorBandPosition);
 
         return config;
     }

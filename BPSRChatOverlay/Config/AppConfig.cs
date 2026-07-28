@@ -8,6 +8,8 @@ public sealed class AppConfig
     public const int DefaultSenderNameColumnWidth = 108;
     public const int MinSenderNameColumnWidth = 60;
     public const int MaxSenderNameColumnWidth = 240;
+    public const string ChatColorBandPositionLeft = "Left";
+    public const string ChatColorBandPositionRight = "Right";
 
     public string? CaptureDeviceName { get; set; }
 
@@ -43,6 +45,11 @@ public sealed class AppConfig
     public bool ShowChatSeparators { get; set; } = true;
 
     public bool ShowChatZebraStripes { get; set; } = true;
+
+    public bool ShowChatColorBand { get; set; } = true;
+
+    public string ChatColorBandPosition { get; set; } =
+        ChatColorBandPositionLeft;
 
     public double? WindowLeft { get; set; }
 
@@ -91,4 +98,14 @@ public sealed class AppConfig
     public bool ShowDebugPanel { get; set; } = false;
 
     public bool TopMost { get; set; } = true;
+
+    public static string NormalizeChatColorBandPosition(string? position)
+    {
+        return string.Equals(
+            position,
+            ChatColorBandPositionRight,
+            StringComparison.OrdinalIgnoreCase)
+            ? ChatColorBandPositionRight
+            : ChatColorBandPositionLeft;
+    }
 }
