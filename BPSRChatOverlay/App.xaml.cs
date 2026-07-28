@@ -1,6 +1,11 @@
 using System;
+using System.Diagnostics;
+using System.IO;
+using System.Reflection;
 using System.Threading;
 using System.Windows;
+using Serilog;
+using Serilog.Events;
 
 namespace BPSRChatOverlay
 {
@@ -13,6 +18,7 @@ namespace BPSRChatOverlay
 
         private Mutex? _singleInstanceMutex;
         private bool _ownsSingleInstanceMutex;
+        private bool _fileLoggingInitialized;
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -55,12 +61,37 @@ namespace BPSRChatOverlay
                 return;
             }
 
+            InitializeLogging();
+
+            Log.Information(
+                "Application started. Version: {Version}, OS: {OS}, ProcessBitness: {ProcessBitness}-bit, LogDirectory: {LogDirectory}",
+                Assembly.GetExecutingAssembly().GetName().Version?.ToString()
+                    ?? "unknown",
+                Environment.OSVersion.VersionString,
+                Environment.Is64BitProcess ? 64 : 32,
+                GetLogDirectoryPath());
+
             MainWindow = new MainWindow();
             MainWindow.Show();
         }
 
         protected override void OnExit(ExitEventArgs e)
         {
+            if (_fileLoggingInitialized)
+            {
+                try
+                {
+                    Log.Information("Application shutdown completed");
+                    Log.CloseAndFlush();
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Failed to flush file logging: {ex}");
+                }
+
+                _fileLoggingInitialized = false;
+            }
+
             if (_ownsSingleInstanceMutex)
             {
                 _singleInstanceMutex?.ReleaseMutex();
@@ -71,6 +102,54 @@ namespace BPSRChatOverlay
             _singleInstanceMutex = null;
 
             base.OnExit(e);
+        }
+
+        private void InitializeLogging()
+        {
+            string logDirectory = GetLogDirectoryPath();
+
+            try
+            {
+                Directory.CreateDirectory(logDirectory);
+
+                string logFilePath = Path.Combine(
+                    logDirectory,
+                    "bpsr-chat-overlay-.log");
+
+                Log.Logger = new LoggerConfiguration()
+                    .MinimumLevel.Information()
+                    .WriteTo.File(
+                        logFilePath,
+                        restrictedToMinimumLevel: LogEventLevel.Information,
+                        outputTemplate:
+                            "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
+                        rollingInterval: RollingInterval.Day,
+                        fileSizeLimitBytes: 10 * 1024 * 1024,
+                        rollOnFileSizeLimit: true,
+                        retainedFileCountLimit: null,
+                        retainedFileTimeLimit: TimeSpan.FromDays(7))
+                    .CreateLogger();
+
+                _fileLoggingInitialized = true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to initialize file logging: {ex}");
+                MessageBox.Show(
+                    "ログファイルを初期化できませんでした。ファイルログなしで起動します。",
+                    "BPSR Chat Overlay",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+        }
+
+        private static string GetLogDirectoryPath()
+        {
+            return Path.Combine(
+                Environment.GetFolderPath(
+                    Environment.SpecialFolder.LocalApplicationData),
+                "BPSR Chat Overlay",
+                "Logs");
         }
     }
 

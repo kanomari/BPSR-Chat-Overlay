@@ -96,7 +96,9 @@ public partial class MainWindow : Window
 
             CaptureStatusText.Text = "Npcapを初期化しています...";
 
+            Log.Information("NetCap initialization started");
             _netCap.Init(netCapConfig);
+            Log.Information("NetCap initialization completed");
 
             ChatCaptureBootstrap.Initialize(_netCap);
 
@@ -107,6 +109,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            Log.Error(ex, "Application startup failed");
             CaptureStatusText.Text =
                 $"起動中にエラーが発生しました。\n\n{ex}";
         }
@@ -854,6 +857,7 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        Log.Information("Application shutdown started");
         SaveWindowPlacement();
         _windowPlacementTrackingEnabled = false;
 

@@ -181,7 +181,7 @@ public class NetCap
             }
 
             NumConnectionReaders--;
-            Log.Logger.Information($"{conn.EndPoint} finished reading");
+            Log.Logger.Debug($"{conn.EndPoint} finished reading");
         }, CancelTokenSrc.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
     }
     
@@ -352,7 +352,7 @@ public class NetCap
         {
             // FrameUp is unexpectedly too small
             byte[] debugHeaders = data.ToArray();
-            Log.Logger.Information($"ParseFrameUp: [{Convert.ToHexString(debugHeaders)}] Len={data.Length}");
+            Log.Logger.Debug($"ParseFrameUp: [{Convert.ToHexString(debugHeaders)}] Len={data.Length}");
             return;
         }
 
@@ -394,7 +394,7 @@ public class NetCap
                 {
                     // FrameUp is too small for this type, log it and drop rest of packet as it's no longer safe to continue
                     byte[] debugHeaders = data.ToArray();
-                    Log.Logger.Information($"ParseFrameUp: [{Convert.ToHexString(debugHeaders)}] Len={data.Length}; Dropping Packet");
+                    Log.Logger.Debug($"ParseFrameUp: [{Convert.ToHexString(debugHeaders)}] Len={data.Length}; Dropping Packet");
                     return;
                 }
 
@@ -426,7 +426,7 @@ public class NetCap
         if (data.Length < 12)
         {
             byte[] debugHeaders = data.ToArray();
-            Log.Logger.Information($"ParseReturn: [{Convert.ToHexString(debugHeaders)}] Len={data.Length}");
+            Log.Logger.Debug($"ParseReturn: [{Convert.ToHexString(debugHeaders)}] Len={data.Length}");
             return;
         }
 

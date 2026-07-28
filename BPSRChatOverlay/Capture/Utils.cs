@@ -43,7 +43,7 @@ public class Utils
             }
         }
         sw.Stop();
-        Log.Information("GetProcesses took: {time}ms", sw.ElapsedMilliseconds);
+        Log.Debug("GetProcesses took: {time}ms", sw.ElapsedMilliseconds);
 
         var tcpConnections = TcpHelper.GetExtendedTcpTable();
         foreach (var conn in tcpConnections) {
@@ -78,10 +78,10 @@ public class Utils
     /*
     public static void PrintExeTCPConnections(string filename = "BPSR")
     {
-        Log.Information("TCP connections for {Filename}", filename);
-        Log.Information("Pid, LocalAddress, LocalPort, RemoteAddress, RemotePort, State");
+        Log.Debug("TCP connections for {Filename}", filename);
+        Log.Debug("Pid, LocalAddress, LocalPort, RemoteAddress, RemotePort, State");
         foreach (var conn in GetTCPConnectionsForExe(filename)) {
-            Log.Information("{Pid}, {LocalAddress}, {LocalPort}, {RemoteAddress}, {RemotePort}, {State}",
+            Log.Debug("{Pid}, {LocalAddress}, {LocalPort}, {RemoteAddress}, {RemotePort}, {State}",
                 conn.owningPid,
                 conn.LocalAddress,
                 conn.LocalPort,

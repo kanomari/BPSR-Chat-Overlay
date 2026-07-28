@@ -28,14 +28,15 @@ public class TcpReassembler
                 var newConn = new TcpConnection(ep, destEp, this);
                 Connections.TryAdd(ep, newConn);
                 OnNewConnection?.Invoke(newConn);
-                Log.Information("Got a new connection {ep}", ep);
+                Log.Debug("Got a new connection");
             }
 
             var conn = Connections[ep];
             if (tcpPacket.Reset || tcpPacket.Finished || tcpPacket.Synchronize)
             {
                 RemoveConnection(conn);
-                Log.Information($"Removed connection {ep}, Reset: {tcpPacket.Reset}, Finished: {tcpPacket.Finished}, Synchronize: {tcpPacket.Synchronize}");
+                Log.Debug("Removed connection. Reset: {Reset}, Finished: {Finished}, Synchronize: {Synchronize}",
+                    tcpPacket.Reset, tcpPacket.Finished, tcpPacket.Synchronize);
                 return;
             }
 
@@ -142,7 +143,7 @@ public class TcpReassembler
                     (BinaryPrimitives.ReadInt16BigEndian(payload.AsSpan()[4..]) & 0x7FFF) <= 9)
                 {
                     IsSynced = true;
-                    Log.Information($"Connection {EndPoint} is synced");
+                Log.Debug("Connection is synced");
                 }
                 else {
                     return;
@@ -151,14 +152,14 @@ public class TcpReassembler
 
             if (Packets.ContainsKey(tcpPacket.SequenceNumber))
             {
-                Log.Warning("{SrcEp} -> {DestEp} has duplicate packet {SequenceNumber}, LastSeq: {LastSeq}, Packets.Len: {numPackets}",
-                    EndPoint, DestEndPoint, tcpPacket.SequenceNumber, LastSeq, Packets.Count);
+                Log.Warning("Duplicate packet {SequenceNumber}, LastSeq: {LastSeq}, Packets.Len: {numPackets}",
+                    tcpPacket.SequenceNumber, LastSeq, Packets.Count);
 
                 // I don't like this but its a catch for something going wrong
                 if (unchecked(tcpPacket.SequenceNumber - LastSeq) >= MAX_DUPE_PACKET_SEQ_DIFF)
                 {
-                    Log.Error("{SrcEp} -> {DestEp} dupe exceeded {MAX_DUPE_PACKET_SEQ_DIFF}, removing stream to reset :<, SequenceNumber: {SequenceNumber}, LastSeq: {LastSeq}, Diff {Diff}",
-                        EndPoint, DestEndPoint, MAX_DUPE_PACKET_SEQ_DIFF, tcpPacket.SequenceNumber, LastSeq, (tcpPacket.SequenceNumber - LastSeq));
+                    Log.Error("Duplicate packet exceeded {MAX_DUPE_PACKET_SEQ_DIFF}; removing stream. SequenceNumber: {SequenceNumber}, LastSeq: {LastSeq}, Diff: {Diff}",
+                        MAX_DUPE_PACKET_SEQ_DIFF, tcpPacket.SequenceNumber, LastSeq, (tcpPacket.SequenceNumber - LastSeq));
                     
                     Owner.RemoveConnection(this);
                 }
@@ -166,15 +167,15 @@ public class TcpReassembler
 
             if (tcpPacket.SequenceNumber < LastSeq)
             {
-                Log.Warning("{SrcEp} -> {DestEp} tcpPacket.SequenceNumber < LastSeq, {SequenceNumber} < {LastSeq}",
-                    EndPoint, DestEndPoint, tcpPacket.SequenceNumber, LastSeq);
+                Log.Warning("TCP packet sequence number is earlier than LastSeq: {SequenceNumber} < {LastSeq}",
+                    tcpPacket.SequenceNumber, LastSeq);
             }
 
             if (SeqLt(tcpPacket.SequenceNumber, NextExpectedSeq ?? 0) &&
                 (tcpPacket.SequenceNumber + payload.Length) > NextExpectedSeq)
             {
-                Log.Warning("{SrcEp} -> {DestEp} had overlap! NextExpectedSeq: {NextExpectedSeq}, SeqNumber: {SequenceNumber} to {PacketEndPos}",
-                    EndPoint, DestEndPoint, NextExpectedSeq, tcpPacket.SequenceNumber, (tcpPacket.SequenceNumber + payload.Length));
+                Log.Warning("TCP packet overlap. NextExpectedSeq: {NextExpectedSeq}, SeqNumber: {SequenceNumber} to {PacketEndPos}",
+                    NextExpectedSeq, tcpPacket.SequenceNumber, (tcpPacket.SequenceNumber + payload.Length));
             }
             
             if (NextExpectedSeq == null)
@@ -273,7 +274,7 @@ public class TcpReassembler
                                 (DateTime.Now - x.Value.ArriveTime).TotalSeconds >= 10).ToList();
 
             if (toRemove.Count() > 0)
-                Log.Information($"{EndPoint} -> {DestEndPoint}, Cleaned up {toRemove.Count()} packets");
+                Log.Debug("Cleaned up {PacketCount} packets", toRemove.Count());
 
             foreach (var item in toRemove)
             {
