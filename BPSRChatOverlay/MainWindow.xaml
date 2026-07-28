@@ -22,6 +22,36 @@
         <system:Double x:Key="ChatTextOpacity">1.0</system:Double>
         <system:Double x:Key="WindowDecorationOpacity">1.0</system:Double>
         <system:Double x:Key="ChatBackgroundOpacity">1.0</system:Double>
+        <Duration x:Key="ChatRowAnimationDuration">0:0:0.220</Duration>
+        <system:Double x:Key="ChatRowAnimationOffsetY">6</system:Double>
+        <Duration x:Key="NewChatHighlightDuration">0:0:0.880</Duration>
+        <Color x:Key="NewChatHighlightColor">#40678EB8</Color>
+        <Storyboard x:Key="NewChatHighlightStoryboard">
+            <ColorAnimationUsingKeyFrames
+                Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
+                Duration="{StaticResource NewChatHighlightDuration}">
+                <LinearColorKeyFrame
+                    KeyTime="0:0:0"
+                    Value="Transparent"/>
+                <EasingColorKeyFrame
+                    KeyTime="0:0:0.180"
+                    Value="{StaticResource NewChatHighlightColor}">
+                    <EasingColorKeyFrame.EasingFunction>
+                        <SineEase EasingMode="EaseOut"/>
+                    </EasingColorKeyFrame.EasingFunction>
+                </EasingColorKeyFrame>
+                <LinearColorKeyFrame
+                    KeyTime="0:0:0.260"
+                    Value="{StaticResource NewChatHighlightColor}"/>
+                <EasingColorKeyFrame
+                    KeyTime="0:0:0.880"
+                    Value="Transparent">
+                    <EasingColorKeyFrame.EasingFunction>
+                        <SineEase EasingMode="EaseIn"/>
+                    </EasingColorKeyFrame.EasingFunction>
+                </EasingColorKeyFrame>
+            </ColorAnimationUsingKeyFrames>
+        </Storyboard>
 
         <SolidColorBrush x:Key="WindowBorderBrush" Color="#FF303640"/>
         <SolidColorBrush x:Key="TitleBarOverlayBrush" Color="#D9080B10"/>
@@ -139,7 +169,54 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
-                        <ContentPresenter/>
+                        <Grid>
+                            <Border x:Name="NewChatHighlight"
+                                    IsHitTestVisible="False">
+                                <Border.Background>
+                                    <SolidColorBrush Color="Transparent"/>
+                                </Border.Background>
+                            </Border>
+                            <ContentPresenter
+                                x:Name="AnimatedContent"
+                                Opacity="0">
+                                <ContentPresenter.RenderTransform>
+                                    <TranslateTransform
+                                        Y="{StaticResource ChatRowAnimationOffsetY}"/>
+                                </ContentPresenter.RenderTransform>
+                            </ContentPresenter>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="AnimatedContent"
+                                            Storyboard.TargetProperty="Opacity"
+                                            From="0"
+                                            To="1"
+                                            Duration="{StaticResource ChatRowAnimationDuration}">
+                                            <DoubleAnimation.EasingFunction>
+                                                <PowerEase
+                                                    Power="4"
+                                                    EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="AnimatedContent"
+                                            Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                            From="{StaticResource ChatRowAnimationOffsetY}"
+                                            To="0"
+                                            Duration="{StaticResource ChatRowAnimationDuration}">
+                                            <DoubleAnimation.EasingFunction>
+                                                <PowerEase
+                                                    Power="4"
+                                                    EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>

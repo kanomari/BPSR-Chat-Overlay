@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Media3D;
 using System.Windows.Threading;
 using BPSRChatOverlay.Config;
@@ -592,7 +593,31 @@ public partial class MainWindow : Window
             if (shouldDisplay)
             {
                 ChatListBox.ScrollIntoView(message);
+                BeginNewChatHighlight(message);
             }
+        });
+    }
+
+    private void BeginNewChatHighlight(ChatMessage message)
+    {
+        if (!_appConfig.HighlightNewChatRows)
+        {
+            return;
+        }
+
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+        {
+            if (ChatListBox.ItemContainerGenerator.ContainerFromItem(message)
+                    is not ListBoxItem item ||
+                item.Template.FindName("NewChatHighlight", item)
+                    is not Border highlightBorder ||
+                Resources["NewChatHighlightStoryboard"]
+                    is not Storyboard storyboard)
+            {
+                return;
+            }
+
+            storyboard.Begin(highlightBorder);
         });
     }
 

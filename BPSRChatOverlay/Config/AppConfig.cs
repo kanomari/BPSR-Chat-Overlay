@@ -26,6 +26,8 @@ public sealed class AppConfig
 
     public bool ClickThrough { get; set; } = false;
 
+    public bool HighlightNewChatRows { get; set; } = true;
+
     public double? WindowLeft { get; set; }
 
     public double? WindowTop { get; set; }

@@ -599,6 +599,8 @@
                                               Content="常に最前面に表示する"/>
                                     <CheckBox x:Name="ClickThroughCheckBox"
                                               Content="クリック透過を有効にする"/>
+                                    <CheckBox x:Name="HighlightNewChatRowsCheckBox"
+                                              Content="新着チャットの背景を一時的に強調する"/>
                                     <CheckBox x:Name="ShowDebugPanelCheckBox"
                                               Content="【Debug用】通信確認パネルを表示する"/>
                                 </StackPanel>

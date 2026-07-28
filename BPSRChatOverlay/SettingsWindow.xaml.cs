@@ -72,6 +72,8 @@ public partial class SettingsWindow : Window
                 CultureInfo.CurrentCulture);
         TopMostCheckBox.IsChecked = currentConfig.TopMost;
         ClickThroughCheckBox.IsChecked = currentConfig.ClickThrough;
+        HighlightNewChatRowsCheckBox.IsChecked =
+            currentConfig.HighlightNewChatRows;
         ShowWorldChatCheckBox.IsChecked = currentConfig.ShowWorldChat;
         ShowChannelChatCheckBox.IsChecked = currentConfig.ShowChannelChat;
         ShowPartyChatCheckBox.IsChecked = currentConfig.ShowPartyChat;
@@ -280,6 +282,8 @@ public partial class SettingsWindow : Window
             TextOpacity = textOpacity,
             MenuBackgroundOpacity = menuBackgroundOpacity,
             ClickThrough = ClickThroughCheckBox.IsChecked == true,
+            HighlightNewChatRows =
+                HighlightNewChatRowsCheckBox.IsChecked == true,
             WindowLeft = _currentConfig.WindowLeft,
             WindowTop = _currentConfig.WindowTop,
             WindowWidth = _currentConfig.WindowWidth,
