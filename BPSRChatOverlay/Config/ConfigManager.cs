@@ -11,12 +11,9 @@ public static class ConfigManager
     private const double MaxWindowDimension = 10000;
 
     private static readonly object SaveLock = new();
-    private static readonly string ConfigFilePath =
-        Path.Combine(AppContext.BaseDirectory, "config.json");
-    private static readonly string BackupFilePath =
-        ConfigFilePath + ".bak";
-    private static readonly string TemporaryFilePath =
-        ConfigFilePath + ".tmp";
+    private static readonly string ConfigFilePath = AppPaths.ConfigPath;
+    private static readonly string BackupFilePath = AppPaths.ConfigBackupPath;
+    private static readonly string TemporaryFilePath = AppPaths.ConfigTempPath;
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         WriteIndented = true

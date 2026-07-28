@@ -69,7 +69,7 @@ namespace BPSRChatOverlay
                     ?? "unknown",
                 Environment.OSVersion.VersionString,
                 Environment.Is64BitProcess ? 64 : 32,
-                GetLogDirectoryPath());
+                AppPaths.LogDirectory);
 
             MainWindow = new MainWindow();
             MainWindow.Show();
@@ -106,20 +106,16 @@ namespace BPSRChatOverlay
 
         private void InitializeLogging()
         {
-            string logDirectory = GetLogDirectoryPath();
+            string logDirectory = AppPaths.LogDirectory;
 
             try
             {
                 Directory.CreateDirectory(logDirectory);
 
-                string logFilePath = Path.Combine(
-                    logDirectory,
-                    "bpsr-chat-overlay-.log");
-
                 Log.Logger = new LoggerConfiguration()
                     .MinimumLevel.Information()
                     .WriteTo.File(
-                        logFilePath,
+                        AppPaths.LogFilePathPattern,
                         restrictedToMinimumLevel: LogEventLevel.Information,
                         outputTemplate:
                             "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
@@ -143,14 +139,6 @@ namespace BPSRChatOverlay
             }
         }
 
-        private static string GetLogDirectoryPath()
-        {
-            return Path.Combine(
-                Environment.GetFolderPath(
-                    Environment.SpecialFolder.LocalApplicationData),
-                "BPSR Chat Overlay",
-                "Logs");
-        }
     }
 
 }
