@@ -28,6 +28,10 @@ public sealed class AppConfig
 
     public bool HighlightNewChatRows { get; set; } = true;
 
+    public bool ShowChatSeparators { get; set; } = true;
+
+    public bool ShowChatZebraStripes { get; set; } = true;
+
     public double? WindowLeft { get; set; }
 
     public double? WindowTop { get; set; }

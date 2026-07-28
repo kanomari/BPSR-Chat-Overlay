@@ -157,6 +157,10 @@ public partial class MainWindow : Window
             config.MenuBackgroundColor,
             config.MentionHighlightColor);
         ChatListBox.FontSize = Math.Clamp(config.FontSize, 8, 48);
+        ChatListBox.Tag = config;
+        Resources["ChatZebraStripeBrush"] = config.ShowChatZebraStripes
+            ? Resources["ChatZebraStripeEnabledBrush"]
+            : Brushes.Transparent;
         ChatBackgroundBorder.Background = ChatColors.ChatBackground;
         Resources["ChatBackgroundOpacity"] =
             Math.Clamp(config.BackgroundOpacity, 0.0, 1.0);

@@ -74,6 +74,10 @@ public partial class SettingsWindow : Window
         ClickThroughCheckBox.IsChecked = currentConfig.ClickThrough;
         HighlightNewChatRowsCheckBox.IsChecked =
             currentConfig.HighlightNewChatRows;
+        ShowChatSeparatorsCheckBox.IsChecked =
+            currentConfig.ShowChatSeparators;
+        ShowChatZebraStripesCheckBox.IsChecked =
+            currentConfig.ShowChatZebraStripes;
         ShowWorldChatCheckBox.IsChecked = currentConfig.ShowWorldChat;
         ShowChannelChatCheckBox.IsChecked = currentConfig.ShowChannelChat;
         ShowPartyChatCheckBox.IsChecked = currentConfig.ShowPartyChat;
@@ -284,6 +288,10 @@ public partial class SettingsWindow : Window
             ClickThrough = ClickThroughCheckBox.IsChecked == true,
             HighlightNewChatRows =
                 HighlightNewChatRowsCheckBox.IsChecked == true,
+            ShowChatSeparators =
+                ShowChatSeparatorsCheckBox.IsChecked == true,
+            ShowChatZebraStripes =
+                ShowChatZebraStripesCheckBox.IsChecked == true,
             WindowLeft = _currentConfig.WindowLeft,
             WindowTop = _currentConfig.WindowTop,
             WindowWidth = _currentConfig.WindowWidth,

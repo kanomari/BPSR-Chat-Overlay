@@ -601,6 +601,10 @@
                                               Content="クリック透過を有効にする"/>
                                     <CheckBox x:Name="HighlightNewChatRowsCheckBox"
                                               Content="新着チャットの背景を一時的に強調する"/>
+                                    <CheckBox x:Name="ShowChatSeparatorsCheckBox"
+                                              Content="チャット間に区切り線を表示する"/>
+                                    <CheckBox x:Name="ShowChatZebraStripesCheckBox"
+                                              Content="チャットの背景を交互に表示する"/>
                                     <CheckBox x:Name="ShowDebugPanelCheckBox"
                                               Content="【Debug用】通信確認パネルを表示する"/>
                                 </StackPanel>

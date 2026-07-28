@@ -6,6 +6,8 @@
   "MenuBackgroundOpacity": 0.9,
   "ClickThrough": false,
   "HighlightNewChatRows": true,
+  "ShowChatSeparators": true,
+  "ShowChatZebraStripes": true,
   "WindowLeft": null,
   "WindowTop": null,
   "WindowWidth": 800,

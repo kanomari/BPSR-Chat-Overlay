@@ -19,6 +19,7 @@
         <converters:ChannelNameConverter x:Key="ChannelNameConverter"/>
         <converters:ChannelBrushConverter x:Key="ChannelBrushConverter"/>
         <converters:MentionHighlightConverter x:Key="MentionHighlightConverter"/>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <system:Double x:Key="ChatTextOpacity">1.0</system:Double>
         <system:Double x:Key="WindowDecorationOpacity">1.0</system:Double>
         <system:Double x:Key="ChatBackgroundOpacity">1.0</system:Double>
@@ -60,6 +61,9 @@
         <SolidColorBrush x:Key="TitleButtonHoverBrush" Color="#FF242B35"/>
         <SolidColorBrush x:Key="CloseButtonHoverBrush" Color="#FFC42B3A"/>
         <SolidColorBrush x:Key="TimestampBrush" Color="#FF929AA5"/>
+        <SolidColorBrush x:Key="ChatSeparatorBrush" Color="#26FFFFFF"/>
+        <SolidColorBrush x:Key="ChatZebraStripeEnabledBrush" Color="#18162232"/>
+        <SolidColorBrush x:Key="ChatZebraStripeBrush" Color="Transparent"/>
         <SolidColorBrush x:Key="DebugPanelBrush" Color="#E512161C"/>
         <SolidColorBrush x:Key="DebugPanelBorderBrush" Color="#FF303640"/>
         <SolidColorBrush x:Key="ScrollThumbBrush" Color="#665F6975"/>
@@ -166,10 +170,11 @@
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
-                        <Grid>
+                        <Grid Background="{TemplateBinding Background}">
                             <Border x:Name="NewChatHighlight"
                                     IsHitTestVisible="False">
                                 <Border.Background>
@@ -184,6 +189,15 @@
                                         Y="{StaticResource ChatRowAnimationOffsetY}"/>
                                 </ContentPresenter.RenderTransform>
                             </ContentPresenter>
+                            <Border
+                                Height="1"
+                                Margin="4,0"
+                                VerticalAlignment="Bottom"
+                                Background="{StaticResource ChatSeparatorBrush}"
+                                IsHitTestVisible="False"
+                                Visibility="{Binding Tag.ShowChatSeparators,
+                                    RelativeSource={RelativeSource AncestorType={x:Type ListBox}},
+                                    Converter={StaticResource BooleanToVisibilityConverter}}"/>
                         </Grid>
                         <ControlTemplate.Triggers>
                             <EventTrigger RoutedEvent="FrameworkElement.Loaded">
@@ -220,6 +234,15 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+            <Style.Triggers>
+                <Trigger
+                    Property="ItemsControl.AlternationIndex"
+                    Value="1">
+                    <Setter
+                        Property="Background"
+                        Value="{DynamicResource ChatZebraStripeBrush}"/>
+                </Trigger>
+            </Style.Triggers>
         </Style>
     </Window.Resources>
 
@@ -359,6 +382,7 @@
 
                         <ListBox
                             x:Name="ChatListBox"
+                            AlternationCount="2"
                             ItemsSource="{Binding ChatMessages}"
                             Background="Transparent"
                             BorderThickness="0"
