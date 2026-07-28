@@ -14,7 +14,13 @@ namespace BPSR_ZDPSLib;
 
 public class NetCap : IDisposable
 {
+    private const int MessageHeaderSize = 6;
+    private const int MaxMessageSize = 4 * 1024 * 1024;
+    private const int MaxRawPacketQueueSize = 512;
     private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan ConnectionFilterTtl = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan ConnectionFilterCleanupInterval = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan WarningLogInterval = TimeSpan.FromMinutes(1);
     private NetCapConfig Config;
     public ICaptureDevice? CaptureDevice;
     public TcpReassembler? TcpReassempler;
@@ -27,8 +33,20 @@ public class NetCap : IDisposable
     private readonly HashSet<Task> _connectionReaderTasks = [];
     private int _stopping;
     private int _disposed;
+    private int _rawPacketQueueCount;
     private bool _connectionReadersStopped;
     private bool _packetParserStopped;
+    private long _lastConnectionFilterCleanupTicks = DateTime.UtcNow.Ticks;
+    private long _invalidLengthLastLogTicks;
+    private int _invalidLengthSuppressedCount;
+    private long _invalidFrameLastLogTicks;
+    private int _invalidFrameSuppressedCount;
+    private long _captureErrorLastLogTicks;
+    private int _captureErrorSuppressedCount;
+    private long _queueOverflowLastLogTicks;
+    private int _queueOverflowSuppressedCount;
+    private long _handlerErrorLastLogTicks;
+    private int _handlerErrorSuppressedCount;
     private byte[] DecompressionScratchBuffer = new byte[1024 * 1024];
     private Decompressor _decompressor = new();
     private Dictionary<NotifyId, Action<ReadOnlySpan<byte>, ExtraPacketData>> NotifyHandlers = new();
@@ -36,7 +54,7 @@ public class NetCap : IDisposable
     public ulong NumSeenPackets = 0;
     public DateTime LastPacketSeenAt = DateTime.MinValue;
     public int NumConnectionReaders = 0;
-    public ConcurrentDictionary<ConnectionId, bool> ConnectionFilters = new();
+    public ConcurrentDictionary<ConnectionId, ConnectionFilterEntry> ConnectionFilters = new();
     public ConcurrentBag<string> ImportantLogMsgs = [];
     public ulong NumGameMessagesSeen = 0;
     public ulong NumGameMessagesDequeued = 0;
@@ -97,6 +115,31 @@ public class NetCap : IDisposable
         if (Volatile.Read(ref _stopping) != 0)
             return;
 
+        try
+        {
+            ProcessCapturedPacket(e);
+        }
+        catch (OperationCanceledException) when (
+            Volatile.Read(ref _stopping) != 0 ||
+            CancelTokenSrc.IsCancellationRequested)
+        {
+            // Expected while capture is being stopped.
+        }
+        catch (Exception ex) when (IsRecoverableException(ex))
+        {
+            if (Volatile.Read(ref _stopping) == 0)
+            {
+                LogRateLimitedWarning(
+                    ex,
+                    "Failed to process a captured packet",
+                    ref _captureErrorLastLogTicks,
+                    ref _captureErrorSuppressedCount);
+            }
+        }
+    }
+
+    private void ProcessCapturedPacket(PacketCapture e)
+    {
         var rawPacket = e.GetPacket();
 
         if (IsDebugCaptureFileMode)
@@ -143,16 +186,26 @@ public class NetCap : IDisposable
         }
 
         var connId = new ConnectionId(ipv4.SourceAddress.ToString(), tcpPacket.SourcePort, ipv4.DestinationAddress.ToString(), tcpPacket.DestinationPort);
-        if (!ConnectionFilters.TryGetValue(connId, out var allowed))
+        DateTime utcNow = DateTime.UtcNow;
+        bool allowed;
+
+        if (ConnectionFilters.TryGetValue(connId, out var filterEntry))
         {
-            if (IsFromGame(ipv4, tcpPacket)) {
-                ConnectionFilters.TryAdd(connId, true);
-            }
-            else {
-                ConnectionFilters.TryAdd(connId, false);
-                return;
-            }
+            allowed = filterEntry.IsAllowed;
+            ConnectionFilters.TryUpdate(
+                connId,
+                new ConnectionFilterEntry(allowed, utcNow),
+                filterEntry);
         }
+        else
+        {
+            allowed = IsFromGame(ipv4, tcpPacket);
+            ConnectionFilters.TryAdd(
+                connId,
+                new ConnectionFilterEntry(allowed, utcNow));
+        }
+
+        CleanupExpiredConnectionFilters(utcNow);
 
         if (!allowed)
             return;
@@ -210,6 +263,19 @@ public class NetCap : IDisposable
                 var len = BinaryPrimitives.ReadUInt32BigEndian(header);
                 var rawMsgType = BinaryPrimitives.ReadInt16BigEndian(header[4..]);
                 var msgType = (rawMsgType & 0x7FFF);
+
+                if (len < MessageHeaderSize ||
+                    len > int.MaxValue ||
+                    len > MaxMessageSize)
+                {
+                    LogRateLimitedWarning(
+                        null,
+                        "Discarding a TCP connection with an invalid message length",
+                        ref _invalidLengthLastLogTicks,
+                        ref _invalidLengthSuppressedCount);
+                    break;
+                }
+
                 conn.Pipe.Reader.AdvanceTo(buff.Buffer.Start);
 
                 var msgBuff = await conn.Pipe.Reader
@@ -219,13 +285,31 @@ public class NetCap : IDisposable
                 if (msgBuff.IsCompleted || msgBuff.IsCanceled)
                     break;
 
-                var rawPacket = RawPacketPool.Get();
-                rawPacket.Set((int)len);
-                rawPacket.LastPacketTime = conn.LastPacketTime;
-                msgBuff.Buffer.Slice(0, len).CopyTo(rawPacket.Data.AsSpan()[..(int)len]);
-                RawPacketQueue.Enqueue(rawPacket);
+                RawPacket? rawPacket = RawPacketPool.Get();
+                bool ownershipTransferred = false;
+
+                try
+                {
+                    rawPacket.Set((int)len);
+                    rawPacket.LastPacketTime = conn.LastPacketTime;
+                    msgBuff.Buffer.Slice(0, len).CopyTo(
+                        rawPacket.Data.AsSpan()[..(int)len]);
+
+                    ownershipTransferred = TryEnqueueRawPacket(rawPacket);
+                }
+                finally
+                {
+                    if (!ownershipTransferred)
+                    {
+                        ReturnRawPacketSafely(rawPacket);
+                    }
+                }
+
                 conn.Pipe.Reader.AdvanceTo(msgBuff.Buffer.GetPosition(len));
-                NumGameMessagesSeen++;
+                if (ownershipTransferred)
+                {
+                    NumGameMessagesSeen++;
+                }
             }
         }
         catch (OperationCanceledException) when (
@@ -253,12 +337,32 @@ public class NetCap : IDisposable
         {
             if (RawPacketQueue.TryDequeue(out var rawPacket))
             {
-                ParsePacket(rawPacket.Data[..rawPacket.Len], rawPacket.LastPacketTime);
+                Interlocked.Decrement(ref _rawPacketQueueCount);
 
-                // Important to return the packet to the pool!
-                rawPacket.Return();
-                RawPacketPool.Return(rawPacket);
-                NumGameMessagesDequeued++;
+                try
+                {
+                    ParsePacket(
+                        rawPacket.Data[..rawPacket.Len],
+                        rawPacket.LastPacketTime);
+                    NumGameMessagesDequeued++;
+                }
+                catch (OperationCanceledException) when (
+                    CancelTokenSrc.IsCancellationRequested)
+                {
+                    // Expected during application shutdown.
+                }
+                catch (Exception ex) when (IsRecoverableException(ex))
+                {
+                    LogRateLimitedWarning(
+                        ex,
+                        "Failed to parse a queued game packet",
+                        ref _invalidFrameLastLogTicks,
+                        ref _invalidFrameSuppressedCount);
+                }
+                finally
+                {
+                    ReturnRawPacketSafely(rawPacket);
+                }
             }
             else
             {
@@ -273,12 +377,21 @@ public class NetCap : IDisposable
         while (offset < data.Length)
         {
             var msgData = data[offset..];
-            if (data.Length < 6)
+            if (msgData.Length < MessageHeaderSize)
             {
+                LogInvalidFrame("Game message header is truncated");
                 return;
             }
 
             var len = BinaryPrimitives.ReadUInt32BigEndian(msgData);
+            if (len < MessageHeaderSize ||
+                len > MaxMessageSize ||
+                len > (uint)msgData.Length)
+            {
+                LogInvalidFrame("Game message length is outside the available frame");
+                return;
+            }
+
             var rawMsgType = BinaryPrimitives.ReadInt16BigEndian(msgData[4..]);
             var isCompressed = (rawMsgType & 0x8000) != 0;
             var msgType = (MsgTypeId)(rawMsgType & 0x7FFF);
@@ -322,6 +435,13 @@ public class NetCap : IDisposable
 
     private void ParseFrameDown(ReadOnlySpan<byte> data, bool isCompressed, DateTime lastPacketTime)
     {
+        const int frameDownHeaderSize = 4;
+        if (data.Length < frameDownHeaderSize)
+        {
+            LogInvalidFrame("FrameDown header is truncated");
+            return;
+        }
+
         var seqNum = BinaryPrimitives.ReadUInt32BigEndian(data);
 
         if (isCompressed)
@@ -340,6 +460,13 @@ public class NetCap : IDisposable
 
     private void ParseNotify(ReadOnlySpan<byte> data, bool isCompressed, DateTime lastPacketTime)
     {
+        const int notifyHeaderSize = 16;
+        if (data.Length < notifyHeaderSize)
+        {
+            LogInvalidFrame("Notify header is truncated");
+            return;
+        }
+
         //byte[] debugHeaders = data.ToArray();
 
         var serviceUuid = BinaryPrimitives.ReadUInt64BigEndian(data);
@@ -372,13 +499,37 @@ public class NetCap : IDisposable
         if (NotifyHandlers.TryGetValue(id, out var handler))
         {
             var extraData = new ExtraPacketData(lastPacketTime);
-            handler(msgData, extraData);
+
+            try
+            {
+                handler(msgData, extraData);
+            }
+            catch (OperationCanceledException) when (
+                CancelTokenSrc.IsCancellationRequested)
+            {
+                // Expected during application shutdown.
+            }
+            catch (Exception ex) when (IsRecoverableException(ex))
+            {
+                LogRateLimitedWarning(
+                    ex,
+                    "Notify handler failed",
+                    ref _handlerErrorLastLogTicks,
+                    ref _handlerErrorSuppressedCount);
+            }
         }
         //Log.Information("Service UUID: {ServiceUuid}, Stub ID: {StubId}, Method ID: {MethodId}, IsCompressed: {IsCompressed}", serviceUuid, stubId, methodId, isCompressed);
     }
 
     private void ParseCall(ReadOnlySpan<byte> data, bool isCompressed, DateTime lastPacketTime)
     {
+        const int callHeaderSize = 20;
+        if (data.Length < callHeaderSize)
+        {
+            LogInvalidFrame("Call header is truncated");
+            return;
+        }
+
         //byte[] debugHeaders = data.ToArray();
 
         var proxyServiceId = BinaryPrimitives.ReadUInt64BigEndian(data);
@@ -410,11 +561,14 @@ public class NetCap : IDisposable
     {
         //byte[] debugHeaders = data.ToArray();
 
-        if (data.Length < 26)
+        const int frameHeaderSize = 4;
+        const int embeddedCommonHeaderSize = 14;
+        const int embeddedType2MinimumSize = 22;
+        const int embeddedOtherMinimumSize = 26;
+
+        if (data.Length < frameHeaderSize)
         {
-            // FrameUp is unexpectedly too small
-            byte[] debugHeaders = data.ToArray();
-            Log.Logger.Debug($"ParseFrameUp: [{Convert.ToHexString(debugHeaders)}] Len={data.Length}");
+            LogInvalidFrame("FrameUp header is truncated");
             return;
         }
 
@@ -425,10 +579,35 @@ public class NetCap : IDisposable
 
         while (offset < data.Length)
         {
+            int remainingLength = data.Length - offset;
+            if (remainingLength < embeddedCommonHeaderSize)
+            {
+                LogInvalidFrame("FrameUp embedded header is truncated");
+                return;
+            }
+
             var length = BinaryPrimitives.ReadUInt32BigEndian(data[offset..]);
-            int endPos = offset + (int)length;
+            if (length > int.MaxValue ||
+                length > MaxMessageSize ||
+                length > (uint)remainingLength)
+            {
+                LogInvalidFrame("FrameUp embedded length is outside the available frame");
+                return;
+            }
+
+            int embeddedLength = (int)length;
+            int endPos = offset + embeddedLength;
             offset += 4;
             var flags = BinaryPrimitives.ReadUInt16BigEndian(data[offset..]);
+            int minimumLength = flags == 2
+                ? embeddedType2MinimumSize
+                : embeddedOtherMinimumSize;
+            if (embeddedLength < minimumLength)
+            {
+                LogInvalidFrame("FrameUp embedded message is shorter than its fixed header");
+                return;
+            }
+
             offset += 2;
             var padding0 = BinaryPrimitives.ReadUInt32BigEndian(data[offset..]);
             offset += 4;
@@ -452,14 +631,6 @@ public class NetCap : IDisposable
             }
             else
             {
-                if (data.Length < 30)
-                {
-                    // FrameUp is too small for this type, log it and drop rest of packet as it's no longer safe to continue
-                    byte[] debugHeaders = data.ToArray();
-                    Log.Logger.Debug($"ParseFrameUp: [{Convert.ToHexString(debugHeaders)}] Len={data.Length}; Dropping Packet");
-                    return;
-                }
-
                 var padding1 = BinaryPrimitives.ReadUInt32BigEndian(data[offset..]);
                 offset += 4;
                 var returnUid = BinaryPrimitives.ReadUInt32BigEndian(data[offset..]);
@@ -487,8 +658,7 @@ public class NetCap : IDisposable
 
         if (data.Length < 12)
         {
-            byte[] debugHeaders = data.ToArray();
-            Log.Logger.Debug($"ParseReturn: [{Convert.ToHexString(debugHeaders)}] Len={data.Length}");
+            LogInvalidFrame("Return header is truncated");
             return;
         }
 
@@ -537,6 +707,160 @@ public class NetCap : IDisposable
             Log.Logger.Error(ex, "Error decompressing data of Len: {Len}, DecompressionScratchBuffer Size: {ScratchSize}", data.Length, DecompressionScratchBuffer.Length);
             return [];
         }
+    }
+
+    private bool TryEnqueueRawPacket(RawPacket rawPacket)
+    {
+        if (Volatile.Read(ref _stopping) != 0)
+        {
+            return false;
+        }
+
+        int queueCount = Interlocked.Increment(ref _rawPacketQueueCount);
+        if (queueCount > MaxRawPacketQueueSize)
+        {
+            Interlocked.Decrement(ref _rawPacketQueueCount);
+            LogRateLimitedWarning(
+                null,
+                "Raw packet queue capacity reached; newest packet was discarded",
+                ref _queueOverflowLastLogTicks,
+                ref _queueOverflowSuppressedCount);
+            return false;
+        }
+
+        if (Volatile.Read(ref _stopping) != 0)
+        {
+            Interlocked.Decrement(ref _rawPacketQueueCount);
+            return false;
+        }
+
+        try
+        {
+            RawPacketQueue.Enqueue(rawPacket);
+            return true;
+        }
+        catch
+        {
+            Interlocked.Decrement(ref _rawPacketQueueCount);
+            throw;
+        }
+    }
+
+    private void ReturnRawPacketSafely(RawPacket rawPacket)
+    {
+        try
+        {
+            rawPacket.Return();
+        }
+        catch (Exception ex) when (IsRecoverableException(ex))
+        {
+            Log.Error(ex, "Failed to return a raw packet buffer");
+        }
+
+        try
+        {
+            RawPacketPool.Return(rawPacket);
+        }
+        catch (Exception ex) when (IsRecoverableException(ex))
+        {
+            Log.Error(ex, "Failed to return a raw packet object");
+        }
+    }
+
+    private void CleanupExpiredConnectionFilters(DateTime utcNow)
+    {
+        long previousCleanupTicks =
+            Volatile.Read(ref _lastConnectionFilterCleanupTicks);
+        if (utcNow.Ticks - previousCleanupTicks <
+            ConnectionFilterCleanupInterval.Ticks)
+        {
+            return;
+        }
+
+        if (Interlocked.CompareExchange(
+                ref _lastConnectionFilterCleanupTicks,
+                utcNow.Ticks,
+                previousCleanupTicks) != previousCleanupTicks)
+        {
+            return;
+        }
+
+        DateTime expiresBefore = utcNow - ConnectionFilterTtl;
+        var entries =
+            (ICollection<KeyValuePair<ConnectionId, ConnectionFilterEntry>>)
+            ConnectionFilters;
+
+        foreach (var entry in ConnectionFilters)
+        {
+            if (entry.Value.LastSeenUtc < expiresBefore)
+            {
+                entries.Remove(entry);
+            }
+        }
+    }
+
+    private void LogInvalidFrame(string reason)
+    {
+        LogRateLimitedWarning(
+            null,
+            reason,
+            ref _invalidFrameLastLogTicks,
+            ref _invalidFrameSuppressedCount);
+    }
+
+    private static void LogRateLimitedWarning(
+        Exception? exception,
+        string message,
+        ref long lastLogTicks,
+        ref int suppressedCount)
+    {
+        long utcNowTicks = DateTime.UtcNow.Ticks;
+
+        while (true)
+        {
+            long previousLogTicks = Volatile.Read(ref lastLogTicks);
+            if (previousLogTicks != 0 &&
+                utcNowTicks - previousLogTicks < WarningLogInterval.Ticks)
+            {
+                Interlocked.Increment(ref suppressedCount);
+                return;
+            }
+
+            if (Interlocked.CompareExchange(
+                    ref lastLogTicks,
+                    utcNowTicks,
+                    previousLogTicks) != previousLogTicks)
+            {
+                continue;
+            }
+
+            int suppressed = Interlocked.Exchange(ref suppressedCount, 0);
+            if (exception is null)
+            {
+                Log.Warning(
+                    "{WarningMessage}. SuppressedSincePreviousLog: {SuppressedCount}",
+                    message,
+                    suppressed);
+            }
+            else
+            {
+                Log.Warning(
+                    exception,
+                    "{WarningMessage}. SuppressedSincePreviousLog: {SuppressedCount}",
+                    message,
+                    suppressed);
+            }
+
+            return;
+        }
+    }
+
+    private static bool IsRecoverableException(Exception exception)
+    {
+        return exception is not (
+            OutOfMemoryException or
+            StackOverflowException or
+            AccessViolationException);
     }
 
     private bool IsFromGame(IPv4Packet ip, TcpPacket tcp)
@@ -724,8 +1048,8 @@ public class NetCap : IDisposable
 
         while (RawPacketQueue.TryDequeue(out var rawPacket))
         {
-            rawPacket.Return();
-            RawPacketPool.Return(rawPacket);
+            Interlocked.Decrement(ref _rawPacketQueueCount);
+            ReturnRawPacketSafely(rawPacket);
             discardedPackets++;
         }
 
@@ -959,3 +1283,7 @@ public class PendingConnState(IPAddress addr)
     public DateTime FirstSeenAt { get; set; } = DateTime.Now;
     public bool? IsGameConnection = null;
 }
+
+public readonly record struct ConnectionFilterEntry(
+    bool IsAllowed,
+    DateTime LastSeenUtc);
