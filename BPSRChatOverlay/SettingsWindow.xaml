@@ -468,7 +468,8 @@
                         <ListBoxItem Content="チャット" Tag="Chat"/>
                         <ListBoxItem Content="色" Tag="Color"/>
                         <ListBoxItem Content="ネットワーク" Tag="Network"/>
-                        <ListBoxItem Content="詳細" Tag="Advanced"/>
+                        <ListBoxItem Content="フィルター" Tag="Advanced"/>
+                        <ListBoxItem Content="About" Tag="About"/>
                     </ListBox>
                 </Border>
 
@@ -660,17 +661,21 @@
                                               Content="チャット間に区切り線を表示する"/>
                                     <CheckBox x:Name="ShowChatZebraStripesCheckBox"
                                               Content="チャットの背景を交互に表示する"/>
-                                    <CheckBox x:Name="ShowChatColorBandCheckBox"
-                                              Content="色帯を表示する"/>
                                     <Grid Margin="0,4,0,0">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="210"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="160"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock VerticalAlignment="Center"
-                                                   Text="色帯の位置"/>
+                                        <CheckBox x:Name="ShowChatColorBandCheckBox"
+                                                  VerticalAlignment="Center"
+                                                  Content="色帯を表示する"/>
+                                        <TextBlock Grid.Column="1"
+                                                   Margin="24,0,8,0"
+                                                   VerticalAlignment="Center"
+                                                   Text="位置："/>
                                         <ComboBox x:Name="ChatColorBandPositionComboBox"
-                                                  Grid.Column="1"
+                                                  Grid.Column="2"
                                                   IsEnabled="{Binding IsChecked,
                                                                       ElementName=ShowChatColorBandCheckBox}">
                                             <ComboBoxItem
@@ -868,7 +873,7 @@
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Margin="0,0,8,0">
-                            <TextBlock Text="詳細" Style="{StaticResource SectionTitleStyle}"/>
+                            <TextBlock Text="フィルター" Style="{StaticResource SectionTitleStyle}"/>
                             <Border Style="{StaticResource CardStyle}">
                                 <StackPanel>
                                     <TextBlock Text="キーワードフィルター" FontWeight="SemiBold"/>
@@ -942,6 +947,53 @@
                                             HorizontalAlignment="Left"
                                             Margin="0,10,0,0"
                                             Click="TestMentionSoundButton_Click"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <ScrollViewer x:Name="AboutSettingsPanel"
+                                  Visibility="Collapsed"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="0,0,8,0">
+                            <TextBlock Text="About"
+                                       Style="{StaticResource SectionTitleStyle}"/>
+                            <Border Style="{StaticResource CardStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="BPSR Chat Overlay"
+                                               FontSize="22"
+                                               FontWeight="SemiBold"/>
+
+                                    <TextBlock Text="Version"
+                                               Margin="0,20,0,0"
+                                               Foreground="{DynamicResource SettingsMutedTextBrush}"/>
+                                    <TextBlock Text="v0.1.0 Beta"
+                                               Margin="0,4,0,0"/>
+
+                                    <TextBlock Text="Copyright © 2026 hojumari"
+                                               Margin="0,20,0,0"/>
+
+                                    <TextBlock Text="License"
+                                               Margin="0,20,0,0"
+                                               Foreground="{DynamicResource SettingsMutedTextBrush}"/>
+                                    <TextBlock Text="MIT License"
+                                               Margin="0,4,0,0"/>
+
+                                    <TextBlock Text="Acknowledgements"
+                                               Margin="0,20,0,8"
+                                               FontWeight="SemiBold"/>
+                                    <TextBlock Text="This application includes code derived from BPSR-ZDPS."
+                                               TextWrapping="Wrap"/>
+                                    <TextBlock Text="Portions Copyright (c) 2025 BPSR-ZDPS contributors"
+                                               Margin="0,8,0,0"
+                                               TextWrapping="Wrap"/>
+                                    <TextBlock Text="Licensed under the MIT License."
+                                               Margin="0,8,0,0"
+                                               TextWrapping="Wrap"/>
+                                    <TextBlock Text="Thanks to the BPSR-ZDPS project and contributors."
+                                               Margin="0,8,0,0"
+                                               TextWrapping="Wrap"/>
                                 </StackPanel>
                             </Border>
                         </StackPanel>

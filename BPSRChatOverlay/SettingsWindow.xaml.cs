@@ -119,7 +119,8 @@ public partial class SettingsWindow : Window
             ChatSettingsPanel is null ||
             ColorSettingsPanel is null ||
             NetworkSettingsPanel is null ||
-            AdvancedSettingsPanel is null)
+            AdvancedSettingsPanel is null ||
+            AboutSettingsPanel is null)
         {
             return;
         }
@@ -137,6 +138,8 @@ public partial class SettingsWindow : Window
             category == "Network" ? Visibility.Visible : Visibility.Collapsed;
         AdvancedSettingsPanel.Visibility =
             category == "Advanced" ? Visibility.Visible : Visibility.Collapsed;
+        AboutSettingsPanel.Visibility =
+            category == "About" ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void SettingsTitleBar_MouseLeftButtonDown(
