@@ -223,7 +223,17 @@ public partial class MainWindow : Window
         if (settingsWindow.ShowDialog() == true &&
             settingsWindow.SavedConfig is { } savedConfig)
         {
-            ConfigManager.Save(savedConfig);
+            if (!SaveConfigSafely(savedConfig))
+            {
+                MessageBox.Show(
+                    this,
+                    "設定を保存できませんでした。ログを確認してください。",
+                    "BPSR Chat Overlay",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
             _appConfig = savedConfig;
             ApplyDisplaySettings(_appConfig);
             ReevaluateMentionStatus();
@@ -404,15 +414,17 @@ public partial class MainWindow : Window
         }
     }
 
-    private static void SaveConfigSafely(AppConfig config)
+    private static bool SaveConfigSafely(AppConfig config)
     {
         try
         {
             ConfigManager.Save(config);
+            return true;
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"Failed to save config.json: {ex}");
+            return false;
         }
     }
 
