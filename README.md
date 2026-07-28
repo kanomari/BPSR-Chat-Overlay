@@ -1,83 +1,186 @@
-\# BPSR Chat Overlay
+# BPSR Chat Overlay
 
+BLUE PROTOCOL: Star Resonance（ブループロトコル：スターレゾナンス）のゲーム内チャットを、独立したオーバーレイウィンドウへ表示するWindowsアプリケーションです。
 
+Npcapでゲームの通信を読み取る方式のため、ゲームクライアントへの入力、改造、自動操作は行いません。
 
-A read-only external chat overlay for \*\*Blue Protocol: Star Resonance\*\*.
+> [!WARNING]
+> 現在はアルファ版です。動作環境やゲーム側の更新によって、チャットを取得できない場合や予期しない問題が発生する可能性があります。
 
+## 主な機能
 
+- ゲーム内チャットのリアルタイム表示
+- ワールド、チャンネル、パーティ、ギルド、初心者チャットの表示切り替え
+- キーワードによるチャット絞り込み
+- キーワードのハイライトと通知音
+- チャット種別ごとの文字色設定
+- 背景、文字、メニューバーの不透明度設定
+- 常に最前面表示
+- クリック透過
+- ネットワークカードの選択
+- 通信状態を確認できるデバッグパネル
 
-This application displays in-game chat in a transparent overlay window without modifying the game client.
+表示するチャットは最大500件です。上限を超えた古いチャットは画面から順次削除されます。
 
+## 動作環境
 
+- Windows 11（64ビット）
+- [Npcap](https://npcap.com/#download)
 
-> \*\*Project Status:\*\* Alpha
+本アプリを使用する前にNpcapをインストールしてください。Npcapが正しく導入されていない場合、ネットワークカードの一覧取得やパケットキャプチャを開始できません。
 
+## インストール
 
+1. [Releases](https://github.com/kanomari/BPSR-Chat-Overlay/releases)から最新版をダウンロードします。
+2. ダウンロードしたZIPファイルを任意のフォルダーへ展開します。
+3. `BPSRChatOverlay.exe`を起動します。
 
-\## Features
+アプリは二重起動できません。すでに起動している場合は、既存のウィンドウを終了してから起動してください。
 
+## 使い方
 
+1. BPSR Chat Overlayを起動します。
+2. タイトルバー右側の歯車ボタンから設定画面を開きます。
+3. 「ネットワーク」で、ゲーム通信に使用しているネットワークカードを選択します。
+4. 設定を保存し、アプリを再起動します。
+5. ゲームへログインしてチャットを受信すると、オーバーレイに表示されます。
 
-\- Real-time chat display
+ネットワークカードの変更は、次回起動時に反映されます。有線LAN、Wi-Fi、VPNなど複数の候補がある場合は、実際にゲーム通信で使用しているものを選択してください。
 
-\- Chat filtering
+### ウィンドウ操作
 
-\- Chat highlighting
+- タイトルバーをドラッグするとウィンドウを移動できます。
+- ウィンドウの端をドラッグするとサイズを変更できます。
+- 歯車ボタンで設定画面を開きます。
+- `×`ボタンで終了します。
+- `Ctrl` + `Shift` + `F10`でクリック透過の有効・無効を切り替えます。
 
-\- Notification sounds
+クリック透過を有効にすると、マウス操作が背後のゲームへ渡されます。ウィンドウを操作できなくなった場合は、`Ctrl` + `Shift` + `F10`で解除してください。
 
-\- Transparent overlay window
+## 設定
 
-\- Click-through mode
+### 表示
 
-   ! Notes
-    - Press **Ctrl + Shift +F10** to enable or disable Click-through mode.
+- フォントサイズ
+- 時刻列と名前列の幅
+- チャット背景、文字、メニューバーの不透明度
+- 常に最前面
+- クリック透過
+- 新着チャットの強調
+- 区切り線、交互背景、チャット種別の色帯
+- デバッグ用通信確認パネル
 
-\- Appearance customization
+### チャット
 
+表示対象とするチャット種別を選択できます。
 
+### 色
 
-\## Requirements
+各チャット種別の文字色、チャット背景色、メニュー背景色を変更できます。
 
+### フィルターと通知
 
+- キーワードフィルター：指定したキーワードを含むチャットだけを表示します。
+- キーワードハイライト：指定したキーワードを含むチャットを強調します。
+- 通知音：ハイライト対象を受信したときに音声ファイルを再生します。
 
-\- Windows 11
+キーワードはスペースまたは改行で複数指定できます。
 
-\- Npcap
+## データ保存先
 
+設定とログは、次のフォルダーへ保存されます。
 
+```text
+%LOCALAPPDATA%\BPSR Chat Overlay
+```
 
-\## License
+主なファイル：
 
+```text
+config.json          設定
+config.json.bak      設定のバックアップ
+Logs\                ログ
+```
 
+ログは日単位および10 MiB単位でローテーションされ、7日を超えたファイルは削除されます。
 
-MIT License
+不具合を報告する際はログが調査に役立ちます。ただし、第三者へ送付する前に内容を確認してください。
 
+## トラブルシューティング
 
+### ネットワークカードが表示されない
 
-See `LICENSE` for details.
+- Npcapがインストールされているか確認してください。
+- Npcapをインストールした直後の場合は、Windowsを再起動してください。
+- 設定画面の「ネットワーク」で「再読み込み」を実行してください。
 
+### チャットが表示されない
 
+1. ゲームで使用しているネットワークカードが選択されているか確認します。
+2. ネットワークカードを変更した場合は、アプリを再起動します。
+3. 設定のチャット種別とキーワードフィルターを確認します。
+4. デバッグ用通信確認パネルを有効にして、Npcap取得パケット数が増えているか確認します。
+5. `%LOCALAPPDATA%\BPSR Chat Overlay\Logs`のログを確認します。
 
-\## Third-Party Software
+VPNや仮想ネットワークアダプターを使用している場合、ゲーム通信が通常とは異なるネットワークカードを通ることがあります。
 
+### ウィンドウをクリックできない
 
+クリック透過が有効になっています。`Ctrl` + `Shift` + `F10`を押して解除してください。
 
-This project incorporates and modifies portions of the source code from \*\*BPSR-ZDPS\*\*.
+### 設定を初期化したい
 
+アプリを終了してから、次のファイルを別の場所へ移動するか削除してください。
 
+```text
+%LOCALAPPDATA%\BPSR Chat Overlay\config.json
+```
 
-See `THIRD\_PARTY\_NOTICES.md` for details.
+次回起動時に既定の設定が作成されます。正常なバックアップが残っている場合は、バックアップから復旧されることがあります。完全に初期化する場合は`config.json.bak`も対象にしてください。
 
+## アルファ版について
 
+- ゲームや通信仕様の更新により動作しなくなる可能性があります。
+- すべてのPC、ネットワーク構成、ゲーム提供地域での動作を保証するものではありません。
+- 過負荷時はメモリ使用量の増加を防ぐため、Npcapで取得したコピーのうち、本アプリ内部で解析待ちになっているデータの一部を破棄することがあります。PCやゲームが送受信する通信データには影響しません。
+- 不具合は[GitHub Issues](https://github.com/kanomari/BPSR-Chat-Overlay/issues)で報告してください。
 
-\## Disclaimer
+不具合報告には、アプリのバージョン、Windowsのバージョン、接続方式（有線・Wi-Fi・VPN）、発生手順、ログの該当箇所があると調査しやすくなります。チャット本文、ユーザー名、IPアドレスなどの個人情報は投稿しないでください。
 
+## 開発者向け
 
+### 必要な環境
 
-This is an unofficial fan-made project.
+- Windows 11
+- .NET 9 SDK
+- Npcap
+- Visual Studio 2022、Visual Studio Code、または.NET CLI
 
+### ビルド
 
+```powershell
+git clone https://github.com/kanomari/BPSR-Chat-Overlay.git
+cd BPSR-Chat-Overlay
+dotnet restore
+dotnet build BPSRChatOverlay.slnx --configuration Debug
+```
 
-It is not affiliated with, endorsed by, or sponsored by the game developer or publisher.
+Releaseビルド：
 
+```powershell
+dotnet build BPSRChatOverlay.slnx --configuration Release
+```
+
+## プライバシーと免責事項
+
+本アプリは、チャット表示のためにローカルPC上のネットワーク通信をキャプチャして解析します。ゲームクライアントへパケットを送信したり、ゲームを操作したりする機能はありません。
+
+本プロジェクトは非公式のファンメイドツールです。ゲームの開発元・運営元・販売元とは関係がなく、それらによる承認や支援を受けたものではありません。
+
+利用者自身の責任で使用してください。利用前に、適用されるゲームの利用規約や地域の法令を確認してください。
+
+## ライセンス
+
+本プロジェクトは[MIT License](LICENSE)の下で公開されています。
+
+パケットキャプチャ、TCP再構築、ネットワークプロトコル処理の一部には、BPSR-ZDPS由来のコードが含まれています。詳細は[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)を参照してください。
