@@ -13,12 +13,18 @@ public class TcpReassembler
     public static ILogger Log = Serilog.Log.ForContext<TcpReassembler>();
 
     public static TimeSpan ConnectionCleanUpInterval = TimeSpan.FromSeconds(60);
-    public Action<TcpConnection> OnNewConnection;
+    public Action<TcpConnection>? OnNewConnection;
     public ConcurrentDictionary<IPEndPoint, TcpConnection> Connections = new();
     public DateTime LastConnectionCleanUpTime = DateTime.Now;
+    private int _stopping;
     
     public void AddPacket(IPv4Packet ipPacket, TcpPacket tcpPacket, PosixTimeval timeval)
     {
+        if (Volatile.Read(ref _stopping) != 0)
+        {
+            return;
+        }
+
         try
         {
             var ep = new IPEndPoint(ipPacket.SourceAddress, tcpPacket.SourcePort);
@@ -26,7 +32,19 @@ public class TcpReassembler
             {
                 var destEp = new IPEndPoint(ipPacket.DestinationAddress, tcpPacket.DestinationPort);
                 var newConn = new TcpConnection(ep, destEp, this);
-                Connections.TryAdd(ep, newConn);
+                if (!Connections.TryAdd(ep, newConn))
+                {
+                    newConn.Dispose();
+                    return;
+                }
+
+                if (Volatile.Read(ref _stopping) != 0)
+                {
+                    RemoveConnection(newConn);
+                    newConn.Dispose();
+                    return;
+                }
+
                 OnNewConnection?.Invoke(newConn);
                 Log.Debug("Got a new connection");
             }
@@ -90,14 +108,28 @@ public class TcpReassembler
 
     public void RemoveConnection(TcpConnection conn)
     {
-        conn.IsAlive = false;
-        conn.CancelTokenSrc.Cancel();
+        conn.Stop();
         Connections.TryRemove(conn.EndPoint, out var _);
-        conn.Pipe.Reader.CancelPendingRead();
-        conn.Pipe.Writer.Complete();
     }
 
-    public class TcpConnection(IPEndPoint endPoint, IPEndPoint destEndPoint, TcpReassembler owner)
+    public void StopAllConnections()
+    {
+        Interlocked.Exchange(ref _stopping, 1);
+
+        foreach (var connection in Connections.Values.ToArray())
+        {
+            try
+            {
+                RemoveConnection(connection);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to stop a TCP connection");
+            }
+        }
+    }
+
+    public class TcpConnection(IPEndPoint endPoint, IPEndPoint destEndPoint, TcpReassembler owner) : IDisposable
     {
         public const int NUM_PACKETS_BEFORE_CLEAN_UP = 200;
         public const int MAX_DUPE_PACKET_SEQ_DIFF = 1700;
@@ -116,6 +148,8 @@ public class TcpReassembler
         public bool IsSynced = false;
         public TcpReassembler Owner = owner;
         public DateTime LastPacketTime;
+        private int _stopped;
+        private int _disposed;
 
         static bool SeqLt(uint a, uint b) => unchecked((int)(a - b)) < 0;
         static bool SeqGt(uint a, uint b) => unchecked((int)(a - b)) > 0;
@@ -280,6 +314,57 @@ public class TcpReassembler
             {
                 Packets.Remove(item.Key);
             }
+        }
+
+        public void Stop()
+        {
+            if (Interlocked.Exchange(ref _stopped, 1) != 0)
+            {
+                return;
+            }
+
+            IsAlive = false;
+
+            try
+            {
+                CancelTokenSrc.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // A concurrent connection cleanup already completed disposal.
+            }
+
+            Pipe.Reader.CancelPendingRead();
+
+            try
+            {
+                Pipe.Writer.Complete();
+            }
+            catch (InvalidOperationException)
+            {
+                // The writer may already have been completed by another stop path.
+            }
+        }
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) != 0)
+            {
+                return;
+            }
+
+            Stop();
+
+            try
+            {
+                Pipe.Reader.Complete();
+            }
+            catch (InvalidOperationException)
+            {
+                // The reader may already have been completed.
+            }
+
+            CancelTokenSrc.Dispose();
         }
     }
 }

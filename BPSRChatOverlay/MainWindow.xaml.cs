@@ -56,6 +56,7 @@ public partial class MainWindow : Window
     private HwndSource? _windowSource;
     private bool _clickThroughHotKeyRegistered;
     private bool _windowPlacementTrackingEnabled;
+    private int _shutdownStarted;
 
     public ObservableCollection<ChatMessage> ChatMessages { get; } = new();
 
@@ -869,27 +870,80 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
-        Log.Information("Application shutdown started");
-        SaveWindowPlacement();
-        _windowPlacementTrackingEnabled = false;
-
-        if (_clickThroughHotKeyRegistered)
+        if (Interlocked.Exchange(ref _shutdownStarted, 1) != 0)
         {
-            UnregisterHotKey(_windowHandle, ClickThroughHotKeyId);
-            _clickThroughHotKeyRegistered = false;
+            base.OnClosed(e);
+            return;
         }
 
-        _windowSource?.RemoveHook(WindowMessageHook);
+        Log.Information("Application shutdown started");
+        _windowPlacementTrackingEnabled = false;
 
-        _windowPlacementSaveTimer.Stop();
-        _statusTimer.Stop();
+        RunShutdownAction(
+            SaveWindowPlacement,
+            "Failed to save window placement during shutdown");
 
-        ChatCaptureManager.ChatReceived -= OnChatReceived;
+        RunShutdownAction(
+            () =>
+            {
+                if (!_clickThroughHotKeyRegistered)
+                {
+                    return;
+                }
 
-        _mentionSoundPlayer.Dispose();
-        _netCap.Stop();
+                if (!UnregisterHotKey(_windowHandle, ClickThroughHotKeyId))
+                {
+                    Log.Warning("Failed to unregister click-through hot key");
+                }
 
-        base.OnClosed(e);
+                _clickThroughHotKeyRegistered = false;
+            },
+            "Failed to unregister click-through hot key");
+
+        RunShutdownAction(
+            () => _windowSource?.RemoveHook(WindowMessageHook),
+            "Failed to remove window message hook");
+
+        RunShutdownAction(
+            () =>
+            {
+                _windowPlacementSaveTimer.Stop();
+                _statusTimer.Stop();
+            },
+            "Failed to stop window timers");
+
+        RunShutdownAction(
+            () => ChatCaptureManager.ChatReceived -= OnChatReceived,
+            "Failed to unsubscribe chat event");
+
+        RunShutdownAction(
+            _mentionSoundPlayer.Dispose,
+            "Failed to dispose mention sound player");
+
+        RunShutdownAction(
+            _netCap.Dispose,
+            "Failed to stop and dispose NetCap");
+
+        try
+        {
+            base.OnClosed(e);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Base window shutdown failed");
+        }
+    }
+
+    private static void RunShutdownAction(Action action, string errorMessage)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, errorMessage);
+        }
     }
 
     private static IntPtr GetWindowLongPtr(IntPtr windowHandle, int index)

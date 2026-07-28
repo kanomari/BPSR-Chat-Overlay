@@ -12,16 +12,23 @@ using ZstdSharp;
 
 namespace BPSR_ZDPSLib;
 
-public class NetCap
+public class NetCap : IDisposable
 {
+    private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(5);
     private NetCapConfig Config;
-    public ICaptureDevice CaptureDevice;
-    public TcpReassembler TcpReassempler;
+    public ICaptureDevice? CaptureDevice;
+    public TcpReassembler? TcpReassempler;
 
-    private CancellationTokenSource CancelTokenSrc = new();
+    private readonly CancellationTokenSource CancelTokenSrc = new();
     public ObjectPool<RawPacket> RawPacketPool = ObjectPool.Create(new DefaultPooledObjectPolicy<RawPacket>());
     public ConcurrentQueue<RawPacket> RawPacketQueue = new();
-    private Task PacketParseTask;
+    private Task? PacketParseTask;
+    private readonly object _connectionTasksLock = new();
+    private readonly HashSet<Task> _connectionReaderTasks = [];
+    private int _stopping;
+    private int _disposed;
+    private bool _connectionReadersStopped;
+    private bool _packetParserStopped;
     private byte[] DecompressionScratchBuffer = new byte[1024 * 1024];
     private Decompressor _decompressor = new();
     private Dictionary<NotifyId, Action<ReadOnlySpan<byte>, ExtraPacketData>> NotifyHandlers = new();
@@ -60,6 +67,14 @@ public class NetCap
         
 
         PacketParseTask = Task.Factory.StartNew(ParsePacketsLoop, CancelTokenSrc.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        _ = PacketParseTask.ContinueWith(
+            faultedTask => Log.Error(
+                faultedTask.Exception,
+                "Packet parse task stopped unexpectedly"),
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted |
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
 
         TcpReassempler = new TcpReassembler();
         TcpReassempler.OnNewConnection += OnNewConnection;
@@ -79,6 +94,9 @@ public class NetCap
 
     private void DeviceOnOnPacketArrival(object sender, PacketCapture e)
     {
+        if (Volatile.Read(ref _stopping) != 0)
+            return;
+
         var rawPacket = e.GetPacket();
 
         if (IsDebugCaptureFileMode)
@@ -115,8 +133,12 @@ public class NetCap
         if (tcpPacket.DestinationPort <= 1000 || tcpPacket.SourcePort <= 1000)
             return;
 
+        var tcpReassembler = TcpReassempler;
+        if (tcpReassembler is null)
+            return;
+
         if (IsDebugCaptureFileMode) {
-            TcpReassempler.AddPacket(ipv4, tcpPacket, rawPacket.Timeval);
+            tcpReassembler.AddPacket(ipv4, tcpPacket, rawPacket.Timeval);
             return;
         }
 
@@ -134,16 +156,52 @@ public class NetCap
 
         if (!allowed)
             return;
-        TcpReassempler.AddPacket(ipv4, tcpPacket, rawPacket.Timeval);
+        tcpReassembler.AddPacket(ipv4, tcpPacket, rawPacket.Timeval);
     }
 
     private void OnNewConnection(TcpReassembler.TcpConnection conn)
     {
-        var task = Task.Factory.StartNew(async () =>
+        Task task;
+
+        lock (_connectionTasksLock)
         {
-            NumConnectionReaders++;
-            while (conn.IsAlive && !CancelTokenSrc.IsCancellationRequested && !conn.CancelTokenSrc.IsCancellationRequested) {
-                var buff = await conn.Pipe.Reader.ReadAtLeastAsync(6);
+            if (Volatile.Read(ref _stopping) != 0)
+            {
+                conn.Dispose();
+                return;
+            }
+
+            task = Task.Run(() => ReadConnectionAsync(conn));
+            _connectionReaderTasks.Add(task);
+        }
+
+        _ = task.ContinueWith(
+            completedTask =>
+            {
+                lock (_connectionTasksLock)
+                {
+                    _connectionReaderTasks.Remove(completedTask);
+                }
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+    }
+
+    private async Task ReadConnectionAsync(TcpReassembler.TcpConnection conn)
+    {
+        Interlocked.Increment(ref NumConnectionReaders);
+
+        try
+        {
+            while (conn.IsAlive &&
+                   !CancelTokenSrc.IsCancellationRequested &&
+                   !conn.CancelTokenSrc.IsCancellationRequested)
+            {
+                var buff = await conn.Pipe.Reader
+                    .ReadAtLeastAsync(6, conn.CancelTokenSrc.Token)
+                    .ConfigureAwait(false);
+
                 if (buff.IsCompleted || buff.IsCanceled)
                     break;
 
@@ -154,20 +212,10 @@ public class NetCap
                 var msgType = (rawMsgType & 0x7FFF);
                 conn.Pipe.Reader.AdvanceTo(buff.Buffer.Start);
 
-                /*
-                if (msgType > 20)
-                {
-                    var msg = $"!! Message Type ({msgType}) Was not in expected range, maybe this is not a game connection! {conn.EndPoint} -> {conn.DestEndPoint}";
-                    Debug.WriteLine(msg);
-                    ImportantLogMsgs.Add(msg);
-                    Log.Logger.Information(msg);
-                    var connId = new ConnectionId(conn.EndPoint.Address.ToString(), (ushort)conn.EndPoint.Port, conn.DestEndPoint.Address.ToString(), (ushort)conn.DestEndPoint.Port);
-                    //ConnectionFilters[connId] = false;
-                    TcpReassempler.RemoveConnection(connId);
-                    break;
-                }*/
+                var msgBuff = await conn.Pipe.Reader
+                    .ReadAtLeastAsync((int)len, conn.CancelTokenSrc.Token)
+                    .ConfigureAwait(false);
 
-                var msgBuff = await conn.Pipe.Reader.ReadAtLeastAsync((int)len);
                 if (msgBuff.IsCompleted || msgBuff.IsCanceled)
                     break;
 
@@ -179,10 +227,24 @@ public class NetCap
                 conn.Pipe.Reader.AdvanceTo(msgBuff.Buffer.GetPosition(len));
                 NumGameMessagesSeen++;
             }
-
-            NumConnectionReaders--;
-            Log.Logger.Debug($"{conn.EndPoint} finished reading");
-        }, CancelTokenSrc.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        }
+        catch (OperationCanceledException) when (
+            CancelTokenSrc.IsCancellationRequested ||
+            conn.CancelTokenSrc.IsCancellationRequested)
+        {
+            // Expected during connection removal or application shutdown.
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "TCP connection reader stopped unexpectedly");
+        }
+        finally
+        {
+            Interlocked.Decrement(ref NumConnectionReaders);
+            TcpReassempler?.RemoveConnection(conn);
+            conn.Dispose();
+            Log.Debug("TCP connection reader finished");
+        }
     }
     
     private void ParsePacketsLoop()
@@ -200,7 +262,7 @@ public class NetCap
             }
             else
             {
-                Task.Delay(10).Wait();
+                CancelTokenSrc.Token.WaitHandle.WaitOne(10);
             }
         }
     }
@@ -495,15 +557,204 @@ public class NetCap
 
     public void Stop()
     {
-        CancelTokenSrc.Cancel();
-
-        if (CaptureDevice != null)
+        if (Interlocked.Exchange(ref _stopping, 1) != 0)
         {
-            CaptureDevice.StopCapture();
-            CaptureDevice.Close();
-            ConnectionFilters.Clear();
+            return;
+        }
 
-            Log.Information("Capture device stopped");
+        Log.Information("NetCap stopping");
+
+        if (CaptureDevice is { } captureDevice)
+        {
+            try
+            {
+                captureDevice.StopCapture();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to stop capture device");
+            }
+
+            try
+            {
+                captureDevice.OnPacketArrival -= DeviceOnOnPacketArrival;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to unsubscribe capture device event");
+            }
+        }
+
+        if (TcpReassempler is { } tcpReassembler)
+        {
+            try
+            {
+                tcpReassembler.OnNewConnection -= OnNewConnection;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to unsubscribe TCP connection event");
+            }
+
+            try
+            {
+                tcpReassembler.StopAllConnections();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to stop TCP connections");
+            }
+        }
+
+        try
+        {
+            CancelTokenSrc.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Stop and Dispose are idempotent.
+        }
+
+        var stopWait = Stopwatch.StartNew();
+        _connectionReadersStopped = WaitForConnectionReaders(StopTimeout);
+        TimeSpan remainingTimeout = StopTimeout - stopWait.Elapsed;
+        if (remainingTimeout < TimeSpan.Zero)
+        {
+            remainingTimeout = TimeSpan.Zero;
+        }
+
+        _packetParserStopped = WaitForPacketParser(remainingTimeout);
+
+        try
+        {
+            DrainRawPacketQueue();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to drain queued packets during shutdown");
+        }
+
+        if (CaptureDevice is { } deviceToClose)
+        {
+            try
+            {
+                deviceToClose.Close();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to close capture device");
+            }
+
+            try
+            {
+                (deviceToClose as IDisposable)?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to dispose capture device");
+            }
+        }
+
+        ConnectionFilters.Clear();
+        Log.Information("NetCap stopped");
+    }
+
+    private bool WaitForConnectionReaders(TimeSpan timeout)
+    {
+        Task[] tasks;
+        lock (_connectionTasksLock)
+        {
+            tasks = _connectionReaderTasks.ToArray();
+        }
+
+        if (!WaitForTasks(Task.WhenAll(tasks), timeout))
+        {
+            Log.Warning(
+                "Timed out waiting for TCP connection readers to stop. RemainingTaskCount: {RemainingTaskCount}",
+                tasks.Count(task => !task.IsCompleted));
+            return false;
+        }
+
+        Log.Information("TCP connection readers stopped");
+        return true;
+    }
+
+    private bool WaitForPacketParser(TimeSpan timeout)
+    {
+        if (PacketParseTask is null)
+        {
+            return true;
+        }
+
+        if (!WaitForTasks(PacketParseTask, timeout))
+        {
+            Log.Warning(
+                "Timed out waiting for packet parse task to stop. Status: {TaskStatus}",
+                PacketParseTask.Status);
+            return false;
+        }
+
+        if (PacketParseTask.IsFaulted)
+        {
+            return true;
+        }
+
+        Log.Information("Packet parse task stopped");
+        return true;
+    }
+
+    private static bool WaitForTasks(Task task, TimeSpan timeout)
+    {
+        try
+        {
+            return Task.WhenAny(task, Task.Delay(timeout))
+                .GetAwaiter()
+                .GetResult() == task;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed while waiting for background task shutdown");
+            return true;
+        }
+    }
+
+    private void DrainRawPacketQueue()
+    {
+        int discardedPackets = 0;
+
+        while (RawPacketQueue.TryDequeue(out var rawPacket))
+        {
+            rawPacket.Return();
+            RawPacketPool.Return(rawPacket);
+            discardedPackets++;
+        }
+
+        if (discardedPackets > 0)
+        {
+            Log.Warning(
+                "Discarded queued packets during shutdown. Count: {DiscardedPacketCount}",
+                discardedPackets);
+        }
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
+        Stop();
+
+        if (_connectionReadersStopped && _packetParserStopped)
+        {
+            CancelTokenSrc.Dispose();
+            _decompressor.Dispose();
+        }
+        else
+        {
+            Log.Warning(
+                "Background tasks did not stop before timeout; task-owned resources were not disposed to avoid use-after-dispose");
         }
     }
 
