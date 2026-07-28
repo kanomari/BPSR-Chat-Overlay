@@ -12,15 +12,26 @@ public static class ConfigManager
     {
         if (!File.Exists(ConfigFilePath))
         {
-            var config = new AppConfig();
-            Save(config);
-            return config;
+            var newConfig = new AppConfig();
+            Save(newConfig);
+            return newConfig;
         }
 
         string json = File.ReadAllText(ConfigFilePath);
 
-        return JsonSerializer.Deserialize<AppConfig>(json)
-               ?? new AppConfig();
+        AppConfig config =
+            JsonSerializer.Deserialize<AppConfig>(json) ?? new AppConfig();
+
+        config.TimeColumnWidth = Math.Clamp(
+            config.TimeColumnWidth,
+            AppConfig.MinTimeColumnWidth,
+            AppConfig.MaxTimeColumnWidth);
+        config.SenderNameColumnWidth = Math.Clamp(
+            config.SenderNameColumnWidth,
+            AppConfig.MinSenderNameColumnWidth,
+            AppConfig.MaxSenderNameColumnWidth);
+
+        return config;
     }
 
     public static void Save(AppConfig config)

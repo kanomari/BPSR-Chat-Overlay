@@ -2,6 +2,13 @@
 
 public sealed class AppConfig
 {
+    public const int DefaultTimeColumnWidth = 40;
+    public const int MinTimeColumnWidth = 36;
+    public const int MaxTimeColumnWidth = 80;
+    public const int DefaultSenderNameColumnWidth = 108;
+    public const int MinSenderNameColumnWidth = 60;
+    public const int MaxSenderNameColumnWidth = 240;
+
     public string? CaptureDeviceName { get; set; }
 
     public List<string> ExeNames { get; set; } =
@@ -17,6 +24,11 @@ public sealed class AppConfig
     ];
 
     public int FontSize { get; set; } = 15;
+
+    public int TimeColumnWidth { get; set; } = DefaultTimeColumnWidth;
+
+    public int SenderNameColumnWidth { get; set; } =
+        DefaultSenderNameColumnWidth;
 
     public double BackgroundOpacity { get; set; } = 0.7;
 

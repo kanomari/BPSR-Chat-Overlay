@@ -157,6 +157,14 @@ public partial class MainWindow : Window
             config.MenuBackgroundColor,
             config.MentionHighlightColor);
         ChatListBox.FontSize = Math.Clamp(config.FontSize, 8, 48);
+        Resources["TimeColumnWidth"] = new GridLength(Math.Clamp(
+            config.TimeColumnWidth,
+            AppConfig.MinTimeColumnWidth,
+            AppConfig.MaxTimeColumnWidth));
+        Resources["SenderNameColumnWidth"] = new GridLength(Math.Clamp(
+            config.SenderNameColumnWidth,
+            AppConfig.MinSenderNameColumnWidth,
+            AppConfig.MaxSenderNameColumnWidth));
         ChatListBox.Tag = config;
         Resources["ChatZebraStripeBrush"] = config.ShowChatZebraStripes
             ? Resources["ChatZebraStripeEnabledBrush"]

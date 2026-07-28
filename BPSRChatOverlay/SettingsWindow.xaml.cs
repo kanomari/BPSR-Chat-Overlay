@@ -63,6 +63,11 @@ public partial class SettingsWindow : Window
 
         FontSizeTextBox.Text =
             currentConfig.FontSize.ToString(CultureInfo.CurrentCulture);
+        TimeColumnWidthTextBox.Text =
+            currentConfig.TimeColumnWidth.ToString(CultureInfo.CurrentCulture);
+        SenderNameColumnWidthTextBox.Text =
+            currentConfig.SenderNameColumnWidth.ToString(
+                CultureInfo.CurrentCulture);
         BackgroundOpacityTextBox.Text =
             currentConfig.BackgroundOpacity.ToString(CultureInfo.CurrentCulture);
         TextOpacityTextBox.Text =
@@ -191,6 +196,40 @@ public partial class SettingsWindow : Window
             return;
         }
 
+        if (!int.TryParse(
+                TimeColumnWidthTextBox.Text,
+                NumberStyles.Integer,
+                CultureInfo.CurrentCulture,
+                out int timeColumnWidth) ||
+            timeColumnWidth < AppConfig.MinTimeColumnWidth ||
+            timeColumnWidth > AppConfig.MaxTimeColumnWidth)
+        {
+            MessageBox.Show(
+                this,
+                $"時刻列の幅は{AppConfig.MinTimeColumnWidth}～{AppConfig.MaxTimeColumnWidth}pxの範囲で入力してください。",
+                "入力エラー",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        if (!int.TryParse(
+                SenderNameColumnWidthTextBox.Text,
+                NumberStyles.Integer,
+                CultureInfo.CurrentCulture,
+                out int senderNameColumnWidth) ||
+            senderNameColumnWidth < AppConfig.MinSenderNameColumnWidth ||
+            senderNameColumnWidth > AppConfig.MaxSenderNameColumnWidth)
+        {
+            MessageBox.Show(
+                this,
+                $"名前列の幅は{AppConfig.MinSenderNameColumnWidth}～{AppConfig.MaxSenderNameColumnWidth}pxの範囲で入力してください。",
+                "入力エラー",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
         if (!double.TryParse(
                 BackgroundOpacityTextBox.Text,
                 NumberStyles.Float,
@@ -282,6 +321,8 @@ public partial class SettingsWindow : Window
                 ?? _currentConfig.CaptureDeviceName,
             ExeNames = [.. _currentConfig.ExeNames],
             FontSize = fontSize,
+            TimeColumnWidth = timeColumnWidth,
+            SenderNameColumnWidth = senderNameColumnWidth,
             BackgroundOpacity = backgroundOpacity,
             TextOpacity = textOpacity,
             MenuBackgroundOpacity = menuBackgroundOpacity,
