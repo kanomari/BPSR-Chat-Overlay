@@ -29,6 +29,8 @@ This application displays in-game chat in a transparent overlay window without m
 \- Transparent overlay window
 
 \- Click-through mode
+   ! Notes
+    - Press **Ctrl + Shift +F10** to enable or disable Click-through mode.
 
 \- Appearance customization
 
