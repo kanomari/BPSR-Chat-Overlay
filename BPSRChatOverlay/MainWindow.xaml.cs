@@ -587,41 +587,73 @@ public partial class MainWindow : Window
          * WPFの画面更新はUIスレッドで行う必要があるため、
          * Dispatcherを経由します。
          */
-        Dispatcher.BeginInvoke(() =>
+        try
         {
-            LogUnknownChannelType(message.ChannelType);
-            message.IsMention = IsMentionMessage(message);
-            _chatHistory.Add(message);
-
-            while (_chatHistory.Count > MaxChatMessageCount)
+            Dispatcher.BeginInvoke(() =>
             {
-                ChatMessage oldestMessage = _chatHistory[0];
-                _chatHistory.RemoveAt(0);
-                ChatMessages.Remove(oldestMessage);
-            }
+                try
+                {
+                    LogUnknownChannelType(message.ChannelType);
+                    message.IsMention = IsMentionMessage(message);
+                    _chatHistory.Add(message);
 
-            if (message.IsMention && _appConfig.EnableMentionSound)
-            {
-                _mentionSoundPlayer.Play(
-                    _appConfig.MentionSoundFilePath);
-            }
+                    while (_chatHistory.Count > MaxChatMessageCount)
+                    {
+                        ChatMessage oldestMessage = _chatHistory[0];
+                        _chatHistory.RemoveAt(0);
+                        ChatMessages.Remove(oldestMessage);
+                    }
 
-            bool shouldDisplay = ShouldDisplayChatMessage(message);
+                    if (message.IsMention &&
+                        _appConfig.EnableMentionSound)
+                    {
+                        _mentionSoundPlayer.Play(
+                            _appConfig.MentionSoundFilePath);
+                    }
 
-            if (shouldDisplay)
-            {
-                ChatMessages.Add(message);
-            }
+                    bool shouldDisplay =
+                        ShouldDisplayChatMessage(message);
 
-            ChatCountText.Text =
-                $"受信件数: {_chatHistory.Count:N0}";
+                    if (shouldDisplay)
+                    {
+                        ChatMessages.Add(message);
+                    }
 
-            if (shouldDisplay)
-            {
-                ChatListBox.ScrollIntoView(message);
-                BeginNewChatHighlight(message);
-            }
-        });
+                    ChatCountText.Text =
+                        $"受信件数: {_chatHistory.Count:N0}";
+
+                    if (shouldDisplay)
+                    {
+                        ChatListBox.ScrollIntoView(message);
+                        BeginNewChatHighlight(message);
+                    }
+                }
+                catch (Exception ex) when (IsRecoverableException(ex))
+                {
+                    Log.Error(
+                        ex,
+                        "Failed to apply a chat message to the UI. ChannelType: {ChannelType}, HasSenderName: {HasSenderName}",
+                        message.ChannelType,
+                        !string.IsNullOrEmpty(message.SenderName));
+                }
+            });
+        }
+        catch (Exception ex) when (IsRecoverableException(ex))
+        {
+            Log.Error(
+                ex,
+                "Failed to queue a chat message for UI processing. ChannelType: {ChannelType}, HasSenderName: {HasSenderName}",
+                message.ChannelType,
+                !string.IsNullOrEmpty(message.SenderName));
+        }
+    }
+
+    private static bool IsRecoverableException(Exception exception)
+    {
+        return exception is not (
+            OutOfMemoryException or
+            StackOverflowException or
+            AccessViolationException);
     }
 
     private void BeginNewChatHighlight(ChatMessage message)
@@ -631,20 +663,43 @@ public partial class MainWindow : Window
             return;
         }
 
-        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+        try
         {
-            if (ChatListBox.ItemContainerGenerator.ContainerFromItem(message)
-                    is not ListBoxItem item ||
-                item.Template.FindName("NewChatHighlight", item)
-                    is not Border highlightBorder ||
-                Resources["NewChatHighlightStoryboard"]
-                    is not Storyboard storyboard)
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
             {
-                return;
-            }
+                try
+                {
+                    if (ChatListBox.ItemContainerGenerator
+                            .ContainerFromItem(message)
+                            is not ListBoxItem item ||
+                        item.Template.FindName("NewChatHighlight", item)
+                            is not Border highlightBorder ||
+                        Resources["NewChatHighlightStoryboard"]
+                            is not Storyboard storyboard)
+                    {
+                        return;
+                    }
 
-            storyboard.Begin(highlightBorder);
-        });
+                    storyboard.Begin(highlightBorder);
+                }
+                catch (Exception ex) when (IsRecoverableException(ex))
+                {
+                    Log.Error(
+                        ex,
+                        "Failed to highlight a chat message. ChannelType: {ChannelType}, HasSenderName: {HasSenderName}",
+                        message.ChannelType,
+                        !string.IsNullOrEmpty(message.SenderName));
+                }
+            });
+        }
+        catch (Exception ex) when (IsRecoverableException(ex))
+        {
+            Log.Error(
+                ex,
+                "Failed to queue chat highlighting. ChannelType: {ChannelType}, HasSenderName: {HasSenderName}",
+                message.ChannelType,
+                !string.IsNullOrEmpty(message.SenderName));
+        }
     }
 
     private bool ShouldDisplayChatMessage(ChatMessage message)
