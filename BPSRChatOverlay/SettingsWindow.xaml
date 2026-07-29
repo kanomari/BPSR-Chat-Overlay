@@ -1398,11 +1398,31 @@
                                                FontSize="22"
                                                FontWeight="SemiBold"/>
 
-                                    <TextBlock Text="Version"
+                                    <TextBlock Text="現在のバージョン"
                                                Margin="0,20,0,0"
                                                Foreground="{DynamicResource SettingsMutedTextBrush}"/>
-                                    <TextBlock Text="v0.1.0 Beta"
-                                               Margin="0,4,0,0"/>
+                                    <StackPanel Orientation="Horizontal"
+                                                Margin="0,4,0,0">
+                                        <TextBlock x:Name="CurrentVersionTextBlock"/>
+                                        <Border Margin="10,0,0,0"
+                                                Padding="7,2"
+                                                Background="{DynamicResource SettingsNoticeBrush}"
+                                                BorderBrush="{DynamicResource SettingsAccentPressedBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="3">
+                                            <TextBlock Text="Beta"
+                                                       FontSize="10"
+                                                       Foreground="{DynamicResource SettingsMutedTextBrush}"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <Button x:Name="CheckForUpdatesButton"
+                                            Content="更新を確認"
+                                            HorizontalAlignment="Left"
+                                            Margin="0,12,0,0"
+                                            Click="CheckForUpdatesButton_Click"/>
+                                    <CheckBox x:Name="CheckForUpdatesOnStartupCheckBox"
+                                              Content="起動時に更新を確認する"
+                                              Margin="0,10,0,0"/>
 
                                     <TextBlock Text="Copyright © 2026 hojumari"
                                                Margin="0,20,0,0"/>

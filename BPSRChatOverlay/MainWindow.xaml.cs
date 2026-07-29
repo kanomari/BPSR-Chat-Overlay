@@ -16,6 +16,7 @@ using BPSRChatOverlay.Config;
 using BPSRChatOverlay.Managers;
 using BPSRChatOverlay.Models;
 using BPSRChatOverlay.UIResources;
+using BPSRChatOverlay.Updates;
 using BPSR_ZDPSLib;
 using Serilog;
 
@@ -43,11 +44,14 @@ public partial class MainWindow : Window
     private const double ResizeBorderWidthDip = 8.0;
     private const long WsExTransparent = 0x00000020L;
     private const long WsExLayered = 0x00080000L;
+    private static readonly TimeSpan UpdateCheckInterval =
+        TimeSpan.FromHours(24);
 
     private readonly NetCap _netCap = new();
     private readonly List<ChatMessage> _chatHistory = [];
     private readonly HashSet<int> _reportedUnknownChannelTypes = [];
     private readonly NotificationSoundPlayer _notificationSoundPlayer = new();
+    private readonly CancellationTokenSource _updateCheckCancellation = new();
     private readonly DispatcherTimer _statusTimer;
     private readonly DispatcherTimer _windowPlacementSaveTimer;
     private AppConfig _appConfig = new();
@@ -74,6 +78,7 @@ public partial class MainWindow : Window
         _windowPlacementSaveTimer.Tick += WindowPlacementSaveTimer_Tick;
         LocationChanged += MainWindow_LocationChanged;
         SizeChanged += MainWindow_SizeChanged;
+        ContentRendered += MainWindow_ContentRendered;
 
         /*
          * NetCapの解析処理はバックグラウンドスレッドで動きます。
@@ -123,6 +128,134 @@ public partial class MainWindow : Window
 
         _statusTimer.Tick += UpdateCaptureStatus;
         _statusTimer.Start();
+    }
+
+    private async void MainWindow_ContentRendered(
+        object? sender,
+        EventArgs e)
+    {
+        ContentRendered -= MainWindow_ContentRendered;
+
+        try
+        {
+            await CheckForUpdatesOnStartupAsync();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(
+                ex,
+                "Unexpected failure during the startup update check");
+        }
+    }
+
+    private async Task CheckForUpdatesOnStartupAsync()
+    {
+        if (!_appConfig.CheckForUpdatesOnStartup)
+        {
+            return;
+        }
+
+        DateTime checkStartedUtc = DateTime.UtcNow;
+        DateTime? previousSuccessfulCheckUtc =
+            _appConfig.LastSuccessfulUpdateCheckUtc;
+        bool cooldownElapsed = HasUpdateCheckCooldownElapsed(
+            checkStartedUtc,
+            previousSuccessfulCheckUtc);
+        if (!cooldownElapsed)
+        {
+            Log.Debug(
+                "Skipped startup update check because the 24-hour interval has not elapsed. LastSuccessfulCheckUtc: {LastSuccessfulCheckUtc}",
+                previousSuccessfulCheckUtc);
+            return;
+        }
+
+        CancellationToken updateCheckToken =
+            _updateCheckCancellation.Token;
+        UpdateCheckResult result = await UpdateCheckService.CheckAsync(
+            updateCheckToken);
+        if (!result.IsSuccess ||
+            updateCheckToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        _appConfig.LastSuccessfulUpdateCheckUtc = DateTime.UtcNow;
+
+        bool shouldNotify =
+            result.IsUpdateAvailable &&
+            result.LatestVersionText is { } latestVersionText &&
+            ShouldNotifyUpdate(
+                latestVersionText,
+                _appConfig.LastNotifiedVersion,
+                checkStartedUtc,
+                previousSuccessfulCheckUtc);
+
+        if (shouldNotify &&
+            result.LatestVersionText is { } notifiedVersion)
+        {
+            _appConfig.LastNotifiedVersion = notifiedVersion;
+        }
+
+        SaveConfigSafely(_appConfig);
+
+        if (!shouldNotify ||
+            !IsVisible ||
+            Volatile.Read(ref _shutdownStarted) != 0 ||
+            result.LatestVersionText is not { } latest ||
+            result.ReleasePageUri is not { } releasePageUri)
+        {
+            return;
+        }
+
+        var dialog = new UpdateAvailableWindow(
+            "新しいバージョンがあります。",
+            result.CurrentVersionText,
+            latest,
+            releasePageUri,
+            "あとで")
+        {
+            Owner = this
+        };
+        dialog.ShowDialog();
+    }
+
+    private static bool HasUpdateCheckCooldownElapsed(
+        DateTime utcNow,
+        DateTime? lastSuccessfulCheckUtc)
+    {
+        if (lastSuccessfulCheckUtc is not { } lastCheck)
+        {
+            return true;
+        }
+
+        DateTime normalizedLastCheck = lastCheck.Kind switch
+        {
+            DateTimeKind.Utc => lastCheck,
+            DateTimeKind.Local => lastCheck.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(lastCheck, DateTimeKind.Utc)
+        };
+
+        return normalizedLastCheck > utcNow ||
+               utcNow - normalizedLastCheck >= UpdateCheckInterval;
+    }
+
+    private static bool ShouldNotifyUpdate(
+        string latestVersion,
+        string lastNotifiedVersion,
+        DateTime utcNow,
+        DateTime? previousSuccessfulCheckUtc)
+    {
+        if (!string.Equals(
+                latestVersion,
+                lastNotifiedVersion,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return HasUpdateCheckCooldownElapsed(
+            utcNow,
+            previousSuccessfulCheckUtc);
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -1071,12 +1204,20 @@ public partial class MainWindow : Window
             "Failed to stop window timers");
 
         RunShutdownAction(
+            _updateCheckCancellation.Cancel,
+            "Failed to cancel the update check");
+
+        RunShutdownAction(
             () => ChatCaptureManager.ChatReceived -= OnChatReceived,
             "Failed to unsubscribe chat event");
 
         RunShutdownAction(
             _notificationSoundPlayer.Dispose,
             "Failed to dispose mention sound player");
+
+        RunShutdownAction(
+            _updateCheckCancellation.Dispose,
+            "Failed to dispose the update check cancellation source");
 
         RunShutdownAction(
             _netCap.Dispose,

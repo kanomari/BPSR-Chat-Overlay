@@ -9,6 +9,7 @@ using System.Windows.Navigation;
 using BPSRChatOverlay.Config;
 using BPSRChatOverlay.Models;
 using BPSRChatOverlay.UIResources;
+using BPSRChatOverlay.Updates;
 using Serilog;
 using SharpPcap;
 using SharpPcap.LibPcap;
@@ -23,6 +24,7 @@ public partial class SettingsWindow : Window
     private readonly AppConfig _currentConfig;
     private readonly NotificationSoundPlayer _notificationTestSoundPlayer = new();
     private readonly List<CaptureDeviceOption> _captureDeviceOptions = [];
+    private CancellationTokenSource? _updateCheckCancellation;
     private string _worldChatTextColor;
     private string _channelChatTextColor;
     private string _partyChatTextColor;
@@ -42,6 +44,10 @@ public partial class SettingsWindow : Window
         InitializeComponent();
 
         _currentConfig = currentConfig;
+        CurrentVersionTextBlock.Text =
+            AppVersionProvider.CurrentVersionText;
+        CheckForUpdatesOnStartupCheckBox.IsChecked =
+            currentConfig.CheckForUpdatesOnStartup;
         CaptureDeviceComboBox.ItemsSource = _captureDeviceOptions;
         LoadCaptureDevices(currentConfig.CaptureDeviceName, true);
         _worldChatTextColor = NormalizeColorText(
@@ -430,7 +436,13 @@ public partial class SettingsWindow : Window
             TalkSoundFilePath =
                 TalkSoundFilePathTextBox.Text.Trim(),
             ShowDebugPanel = ShowDebugPanelCheckBox.IsChecked == true,
-            TopMost = TopMostCheckBox.IsChecked == true
+            TopMost = TopMostCheckBox.IsChecked == true,
+            CheckForUpdatesOnStartup =
+                CheckForUpdatesOnStartupCheckBox.IsChecked == true,
+            LastSuccessfulUpdateCheckUtc =
+                _currentConfig.LastSuccessfulUpdateCheckUtc,
+            LastNotifiedVersion =
+                _currentConfig.LastNotifiedVersion
         };
 
         DialogResult = true;
@@ -663,6 +675,142 @@ public partial class SettingsWindow : Window
             ShowExternalTargetError(
                 "設定・ログフォルダーを開けませんでした。",
                 ex);
+        }
+    }
+
+    private async void CheckForUpdatesButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (_updateCheckCancellation is not null)
+        {
+            return;
+        }
+
+        var cancellation = new CancellationTokenSource();
+        _updateCheckCancellation = cancellation;
+        CheckForUpdatesButton.IsEnabled = false;
+        CheckForUpdatesButton.Content = "確認中...";
+
+        try
+        {
+            UpdateCheckResult result =
+                await UpdateCheckService.CheckAsync(cancellation.Token);
+
+            if (cancellation.IsCancellationRequested || !IsVisible)
+            {
+                return;
+            }
+
+            if (!result.IsSuccess)
+            {
+                if (result.Status != UpdateCheckStatus.Cancelled)
+                {
+                    ShowUpdateCheckDialog(
+                        "更新情報を確認できませんでした。\n\n" +
+                        "インターネット接続を確認して、\n" +
+                        "しばらくしてからもう一度お試しください。");
+                }
+
+                return;
+            }
+
+            _currentConfig.LastSuccessfulUpdateCheckUtc = DateTime.UtcNow;
+
+            if (result.IsUpdateAvailable &&
+                result.LatestVersionText is { } latestVersionText)
+            {
+                _currentConfig.LastNotifiedVersion = latestVersionText;
+            }
+
+            SaveUpdateCheckMetadata();
+
+            if (result.Status == UpdateCheckStatus.NoStableRelease)
+            {
+                ShowUpdateCheckDialog(
+                    "現在、確認できる正式リリースはありません。");
+                return;
+            }
+
+            if (result.IsUpdateAvailable &&
+                result.LatestVersionText is { } latest &&
+                result.ReleasePageUri is { } releasePageUri)
+            {
+                ShowUpdateCheckDialog(
+                    "新しいバージョンがあります。",
+                    result.CurrentVersionText,
+                    latest,
+                    releasePageUri,
+                    "閉じる");
+                return;
+            }
+
+            ShowUpdateCheckDialog(
+                "現在のバージョンは最新版です。",
+                result.CurrentVersionText);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(
+                ex,
+                "Unexpected failure during the manual update check");
+
+            if (!cancellation.IsCancellationRequested && IsVisible)
+            {
+                ShowUpdateCheckDialog(
+                    "更新情報を確認できませんでした。\n\n" +
+                    "インターネット接続を確認して、\n" +
+                    "しばらくしてからもう一度お試しください。");
+            }
+        }
+        finally
+        {
+            bool wasCancelled = cancellation.IsCancellationRequested;
+            if (ReferenceEquals(_updateCheckCancellation, cancellation))
+            {
+                _updateCheckCancellation = null;
+            }
+
+            cancellation.Dispose();
+
+            if (!wasCancelled && IsVisible)
+            {
+                CheckForUpdatesButton.Content = "更新を確認";
+                CheckForUpdatesButton.IsEnabled = true;
+            }
+        }
+    }
+
+    private void ShowUpdateCheckDialog(
+        string messageText,
+        string? currentVersionText = null,
+        string? latestVersionText = null,
+        Uri? releasePageUri = null,
+        string secondaryButtonText = "閉じる")
+    {
+        var dialog = new UpdateAvailableWindow(
+            messageText,
+            currentVersionText,
+            latestVersionText,
+            releasePageUri,
+            secondaryButtonText)
+        {
+            Owner = this
+        };
+        dialog.ShowDialog();
+    }
+
+    private void SaveUpdateCheckMetadata()
+    {
+        try
+        {
+            ConfigManager.Save(_currentConfig);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(
+                ex,
+                "Failed to save update check metadata");
         }
     }
 
@@ -918,6 +1066,7 @@ public partial class SettingsWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _updateCheckCancellation?.Cancel();
         _notificationTestSoundPlayer.Dispose();
         base.OnClosed(e);
     }

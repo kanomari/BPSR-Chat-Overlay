@@ -121,6 +121,12 @@ public sealed class AppConfig
 
     public bool TopMost { get; set; } = true;
 
+    public bool CheckForUpdatesOnStartup { get; set; } = true;
+
+    public DateTime? LastSuccessfulUpdateCheckUtc { get; set; }
+
+    public string LastNotifiedVersion { get; set; } = string.Empty;
+
     public static string NormalizeChatColorBandPosition(string? position)
     {
         return string.Equals(

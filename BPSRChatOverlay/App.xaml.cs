@@ -1,9 +1,9 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 using System.Threading;
 using System.Windows;
+using BPSRChatOverlay.Updates;
 using Serilog;
 using Serilog.Events;
 
@@ -65,8 +65,7 @@ namespace BPSRChatOverlay
 
             Log.Information(
                 "Application started. Version: {Version}, OS: {OS}, ProcessBitness: {ProcessBitness}-bit, LogDirectory: {LogDirectory}",
-                Assembly.GetExecutingAssembly().GetName().Version?.ToString()
-                    ?? "unknown",
+                AppVersionProvider.CurrentVersionText,
                 Environment.OSVersion.VersionString,
                 Environment.Is64BitProcess ? 64 : 32,
                 AppPaths.LogDirectory);

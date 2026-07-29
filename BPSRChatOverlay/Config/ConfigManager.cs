@@ -360,6 +360,19 @@ public static class ConfigManager
             config.WindowTop = null;
         }
 
+        if (config.LastSuccessfulUpdateCheckUtc is { } lastUpdateCheck)
+        {
+            config.LastSuccessfulUpdateCheckUtc =
+                lastUpdateCheck.Kind switch
+                {
+                    DateTimeKind.Utc => lastUpdateCheck,
+                    DateTimeKind.Local => lastUpdateCheck.ToUniversalTime(),
+                    _ => DateTime.SpecifyKind(
+                        lastUpdateCheck,
+                        DateTimeKind.Utc)
+                };
+        }
+
         string normalizedBandPosition =
             AppConfig.NormalizeChatColorBandPosition(
                 config.ChatColorBandPosition);
@@ -498,6 +511,10 @@ public static class ConfigManager
             config.TalkSoundFilePath,
             defaults.TalkSoundFilePath,
             nameof(AppConfig.TalkSoundFilePath));
+        config.LastNotifiedVersion = NormalizeString(
+            config.LastNotifiedVersion,
+            defaults.LastNotifiedVersion,
+            nameof(AppConfig.LastNotifiedVersion));
     }
 
     private static string NormalizeString(
