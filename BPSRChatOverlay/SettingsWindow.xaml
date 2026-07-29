@@ -467,6 +467,7 @@
                         <ListBoxItem Content="表示" Tag="Display"/>
                         <ListBoxItem Content="チャット" Tag="Chat"/>
                         <ListBoxItem Content="色" Tag="Color"/>
+                        <ListBoxItem Content="トーク" Tag="Talk"/>
                         <ListBoxItem Content="ネットワーク" Tag="Network"/>
                         <ListBoxItem Content="フィルター" Tag="Advanced"/>
                         <ListBoxItem Content="About" Tag="About"/>
@@ -486,6 +487,7 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
@@ -722,6 +724,9 @@
                                               Grid.Row="1" Grid.Column="1" Content="ギルド"/>
                                     <CheckBox x:Name="ShowNewbieChatCheckBox"
                                               Grid.Row="2" Content="初心者チャット"/>
+                                    <CheckBox x:Name="ShowTalkChatCheckBox"
+                                              Grid.Row="2" Grid.Column="1"
+                                              Content="トーク"/>
                                 </Grid>
                             </Border>
                         </StackPanel>
@@ -745,6 +750,7 @@
                                             <ColumnDefinition Width="86"/>
                                         </Grid.ColumnDefinitions>
                                         <Grid.RowDefinitions>
+                                            <RowDefinition Height="44"/>
                                             <RowDefinition Height="44"/>
                                             <RowDefinition Height="44"/>
                                             <RowDefinition Height="44"/>
@@ -790,6 +796,14 @@
                                                 BorderThickness="1" CornerRadius="3"/>
                                         <Button Grid.Row="4" Grid.Column="2" Content="変更" Margin="0,4"
                                                 Tag="NewbieChatTextColor" Click="ColorButton_Click"/>
+
+                                        <TextBlock Grid.Row="5" Text="トーク"/>
+                                        <Border x:Name="TalkChatTextColorPreview" Grid.Row="5" Grid.Column="1"
+                                                Width="34" Height="22"
+                                                BorderBrush="{DynamicResource SettingsBorderBrush}"
+                                                BorderThickness="1" CornerRadius="3"/>
+                                        <Button Grid.Row="5" Grid.Column="2" Content="変更" Margin="0,4"
+                                                Tag="TalkChatTextColor" Click="ColorButton_Click"/>
                                     </Grid>
                                 </StackPanel>
                             </Border>
@@ -822,6 +836,66 @@
                                         <Button Grid.Row="1" Grid.Column="2" Content="変更" Margin="0,4"
                                                 Tag="MenuBackgroundColor" Click="ColorButton_Click"/>
                                     </Grid>
+                                </StackPanel>
+                            </Border>
+
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <ScrollViewer x:Name="TalkSettingsPanel"
+                                  Visibility="Collapsed"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="0,0,8,0">
+                            <TextBlock Text="トーク" Style="{StaticResource SectionTitleStyle}"/>
+                            <Border Style="{StaticResource CardStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="トーク設定" FontWeight="SemiBold"/>
+                                    <CheckBox x:Name="EnableTalkHighlightCheckBox"
+                                              Content="トークをハイライトする"
+                                              Margin="0,10,0,2"/>
+
+                                    <Grid Margin="0,12,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="54"/>
+                                            <ColumnDefinition Width="86"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="トークハイライト背景色"/>
+                                        <Border x:Name="TalkHighlightBackgroundColorPreview"
+                                                Grid.Column="1"
+                                                Width="34" Height="22"
+                                                BorderBrush="{DynamicResource SettingsBorderBrush}"
+                                                BorderThickness="1" CornerRadius="3"/>
+                                        <Button Grid.Column="2"
+                                                Content="変更"
+                                                Tag="TalkHighlightBackgroundColor"
+                                                Click="ColorButton_Click"/>
+                                    </Grid>
+
+                                    <CheckBox x:Name="EnableTalkSoundCheckBox"
+                                              Content="トーク通知音を鳴らす"
+                                              Margin="0,14,0,0"/>
+                                    <TextBlock Text="通知音ファイル" Margin="0,14,0,7"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="TalkSoundFilePathTextBox"
+                                                 IsReadOnly="True"/>
+                                        <Button Grid.Column="1" Content="参照"
+                                                Margin="8,0,0,0"
+                                                Click="BrowseTalkSoundButton_Click"/>
+                                        <Button Grid.Column="2" Content="クリア"
+                                                Margin="6,0,0,0"
+                                                Click="ClearTalkSoundButton_Click"/>
+                                    </Grid>
+                                    <Button Content="テスト再生"
+                                            HorizontalAlignment="Left"
+                                            Margin="0,10,0,0"
+                                            Click="TestTalkSoundButton_Click"/>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
@@ -949,6 +1023,7 @@
                                             Click="TestMentionSoundButton_Click"/>
                                 </StackPanel>
                             </Border>
+
                         </StackPanel>
                     </ScrollViewer>
 

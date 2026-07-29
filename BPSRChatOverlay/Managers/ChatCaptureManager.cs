@@ -33,7 +33,7 @@ public static class ChatCaptureManager
 
             message = new ChatMessage
             {
-                ChannelType = (int)notify.VRequest.ChannelType,
+                ChannelType = NormalizeChannelType(notify.VRequest.ChannelType),
                 SenderName = notify.VRequest.ChatMsg.SendCharInfo.Name,
                 Message = notify.VRequest.ChatMsg.MsgInfo.MsgText,
                 Timestamp = DateTime.Now
@@ -60,6 +60,13 @@ public static class ChatCaptureManager
                 message.ChannelType,
                 !string.IsNullOrEmpty(message.SenderName));
         }
+    }
+
+    private static int NormalizeChannelType(ChitChatChannelType channelType)
+    {
+        return channelType == ChitChatChannelType.ChannelGroup
+            ? (int)ChitChatChannelType.ChannelTeam
+            : (int)channelType;
     }
 
     private static bool IsRecoverableException(Exception exception)

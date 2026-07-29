@@ -2,16 +2,17 @@ using System.Diagnostics;
 using System.IO;
 using System.Media;
 using System.Windows.Media;
+using Serilog;
 
 namespace BPSRChatOverlay;
 
-public sealed class MentionSoundPlayer : IDisposable
+public sealed class NotificationSoundPlayer : IDisposable
 {
     private readonly MediaPlayer _mediaPlayer = new();
     private bool _fallbackPlayed;
     private bool _disposed;
 
-    public MentionSoundPlayer()
+    public NotificationSoundPlayer()
     {
         _mediaPlayer.MediaOpened += MediaPlayer_MediaOpened;
         _mediaPlayer.MediaFailed += MediaPlayer_MediaFailed;
@@ -38,8 +39,9 @@ public sealed class MentionSoundPlayer : IDisposable
              !extension.Equals(".mp3", StringComparison.OrdinalIgnoreCase)) ||
             !File.Exists(path))
         {
-            Debug.WriteLine(
-                $"Mention sound file is unavailable: {path}");
+            Log.Warning(
+                "Notification sound file is unavailable. Path: {Path}",
+                path);
             PlaySystemSoundOnce();
             return;
         }
@@ -50,7 +52,7 @@ public sealed class MentionSoundPlayer : IDisposable
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Failed to open mention sound: {ex}");
+            Log.Warning(ex, "Failed to open notification sound. Path: {Path}", path);
             PlaySystemSoundOnce();
         }
     }
@@ -78,7 +80,7 @@ public sealed class MentionSoundPlayer : IDisposable
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Failed to play mention sound: {ex}");
+            Log.Warning(ex, "Failed to play notification sound");
             PlaySystemSoundOnce();
         }
     }
@@ -87,8 +89,9 @@ public sealed class MentionSoundPlayer : IDisposable
         object? sender,
         ExceptionEventArgs e)
     {
-        Debug.WriteLine(
-            $"Mention sound playback failed: {e.ErrorException}");
+        Log.Warning(
+            e.ErrorException,
+            "Notification sound playback failed");
         StopAndClose();
         PlaySystemSoundOnce();
     }
@@ -119,7 +122,7 @@ public sealed class MentionSoundPlayer : IDisposable
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Failed to stop mention sound: {ex}");
+            Debug.WriteLine($"Failed to stop notification sound: {ex}");
         }
     }
 

@@ -16,16 +16,18 @@ namespace BPSRChatOverlay;
 public partial class SettingsWindow : Window
 {
     private readonly AppConfig _currentConfig;
-    private readonly MentionSoundPlayer _mentionTestSoundPlayer = new();
+    private readonly NotificationSoundPlayer _notificationTestSoundPlayer = new();
     private readonly List<CaptureDeviceOption> _captureDeviceOptions = [];
     private string _worldChatTextColor;
     private string _channelChatTextColor;
     private string _partyChatTextColor;
     private string _guildChatTextColor;
     private string _newbieChatTextColor;
+    private string _talkChatTextColor;
     private string _chatBackgroundColor;
     private string _menuBackgroundColor;
     private string _mentionHighlightColor;
+    private string _talkHighlightBackgroundColor;
 
     public AppConfig? SavedConfig { get; private set; }
 
@@ -51,6 +53,9 @@ public partial class SettingsWindow : Window
         _newbieChatTextColor = NormalizeColorText(
             currentConfig.NewbieChatTextColor,
             ChatColors.DefaultNewbieChatTextColor);
+        _talkChatTextColor = NormalizeColorText(
+            currentConfig.TalkChatTextColor,
+            ChatColors.DefaultTalkChatTextColor);
         _chatBackgroundColor = NormalizeColorText(
             currentConfig.ChatBackgroundColor,
             ChatColors.DefaultChatBackgroundColor);
@@ -60,6 +65,9 @@ public partial class SettingsWindow : Window
         _mentionHighlightColor = NormalizeColorText(
             currentConfig.MentionHighlightColor,
             ChatColors.DefaultMentionHighlightColor);
+        _talkHighlightBackgroundColor = NormalizeColorText(
+            currentConfig.TalkHighlightBackgroundColor,
+            ChatColors.DefaultTalkHighlightColor);
 
         FontSizeTextBox.Text =
             currentConfig.FontSize.ToString(CultureInfo.CurrentCulture);
@@ -96,6 +104,7 @@ public partial class SettingsWindow : Window
         ShowPartyChatCheckBox.IsChecked = currentConfig.ShowPartyChat;
         ShowGuildChatCheckBox.IsChecked = currentConfig.ShowGuildChat;
         ShowNewbieChatCheckBox.IsChecked = currentConfig.ShowNewbieChat;
+        ShowTalkChatCheckBox.IsChecked = currentConfig.ShowTalkChat;
         ChatFilterKeywordsTextBox.Text = currentConfig.ChatFilterKeywords;
         EnableMentionNotificationCheckBox.IsChecked =
             currentConfig.EnableMentionNotification;
@@ -105,6 +114,12 @@ public partial class SettingsWindow : Window
             currentConfig.MentionKeywords ?? string.Empty;
         MentionSoundFilePathTextBox.Text =
             currentConfig.MentionSoundFilePath ?? string.Empty;
+        EnableTalkHighlightCheckBox.IsChecked =
+            currentConfig.EnableTalkHighlight;
+        EnableTalkSoundCheckBox.IsChecked =
+            currentConfig.EnableTalkSound;
+        TalkSoundFilePathTextBox.Text =
+            currentConfig.TalkSoundFilePath ?? string.Empty;
         ShowDebugPanelCheckBox.IsChecked =
             currentConfig.ShowDebugPanel;
         UpdateColorPreviews();
@@ -118,6 +133,7 @@ public partial class SettingsWindow : Window
         if (DisplaySettingsPanel is null ||
             ChatSettingsPanel is null ||
             ColorSettingsPanel is null ||
+            TalkSettingsPanel is null ||
             NetworkSettingsPanel is null ||
             AdvancedSettingsPanel is null ||
             AboutSettingsPanel is null)
@@ -134,6 +150,8 @@ public partial class SettingsWindow : Window
             category == "Chat" ? Visibility.Visible : Visibility.Collapsed;
         ColorSettingsPanel.Visibility =
             category == "Color" ? Visibility.Visible : Visibility.Collapsed;
+        TalkSettingsPanel.Visibility =
+            category == "Talk" ? Visibility.Visible : Visibility.Collapsed;
         NetworkSettingsPanel.Visibility =
             category == "Network" ? Visibility.Visible : Visibility.Collapsed;
         AdvancedSettingsPanel.Visibility =
@@ -359,12 +377,14 @@ public partial class SettingsWindow : Window
             ShowPartyChat = ShowPartyChatCheckBox.IsChecked == true,
             ShowGuildChat = ShowGuildChatCheckBox.IsChecked == true,
             ShowNewbieChat = ShowNewbieChatCheckBox.IsChecked == true,
+            ShowTalkChat = ShowTalkChatCheckBox.IsChecked == true,
             ChatFilterKeywords = ChatFilterKeywordsTextBox.Text.Trim(),
             WorldChatTextColor = _worldChatTextColor,
             ChannelChatTextColor = _channelChatTextColor,
             PartyChatTextColor = _partyChatTextColor,
             GuildChatTextColor = _guildChatTextColor,
             NewbieChatTextColor = _newbieChatTextColor,
+            TalkChatTextColor = _talkChatTextColor,
             ChatBackgroundColor = _chatBackgroundColor,
             MenuBackgroundColor = _menuBackgroundColor,
             EnableMentionNotification =
@@ -375,6 +395,14 @@ public partial class SettingsWindow : Window
             MentionHighlightColor = _mentionHighlightColor,
             MentionSoundFilePath =
                 MentionSoundFilePathTextBox.Text.Trim(),
+            EnableTalkHighlight =
+                EnableTalkHighlightCheckBox.IsChecked == true,
+            TalkHighlightBackgroundColor =
+                _talkHighlightBackgroundColor,
+            EnableTalkSound =
+                EnableTalkSoundCheckBox.IsChecked == true,
+            TalkSoundFilePath =
+                TalkSoundFilePathTextBox.Text.Trim(),
             ShowDebugPanel = ShowDebugPanelCheckBox.IsChecked == true,
             TopMost = TopMostCheckBox.IsChecked == true
         };
@@ -588,7 +616,9 @@ public partial class SettingsWindow : Window
         }
 
         System.Drawing.Color selectedColor = dialog.Color;
-        byte alpha = settingName == nameof(AppConfig.MentionHighlightColor)
+        byte alpha = settingName is
+            nameof(AppConfig.MentionHighlightColor) or
+            nameof(AppConfig.TalkHighlightBackgroundColor)
             ? wpfColor.A
             : byte.MaxValue;
         string colorText =
@@ -607,10 +637,13 @@ public partial class SettingsWindow : Window
             nameof(AppConfig.PartyChatTextColor) => _partyChatTextColor,
             nameof(AppConfig.GuildChatTextColor) => _guildChatTextColor,
             nameof(AppConfig.NewbieChatTextColor) => _newbieChatTextColor,
+            nameof(AppConfig.TalkChatTextColor) => _talkChatTextColor,
             nameof(AppConfig.ChatBackgroundColor) => _chatBackgroundColor,
             nameof(AppConfig.MenuBackgroundColor) => _menuBackgroundColor,
             nameof(AppConfig.MentionHighlightColor) =>
                 _mentionHighlightColor,
+            nameof(AppConfig.TalkHighlightBackgroundColor) =>
+                _talkHighlightBackgroundColor,
             _ => ChatColors.DefaultChatTextColor
         };
     }
@@ -634,6 +667,9 @@ public partial class SettingsWindow : Window
             case nameof(AppConfig.NewbieChatTextColor):
                 _newbieChatTextColor = colorText;
                 break;
+            case nameof(AppConfig.TalkChatTextColor):
+                _talkChatTextColor = colorText;
+                break;
             case nameof(AppConfig.ChatBackgroundColor):
                 _chatBackgroundColor = colorText;
                 break;
@@ -642,6 +678,9 @@ public partial class SettingsWindow : Window
                 break;
             case nameof(AppConfig.MentionHighlightColor):
                 _mentionHighlightColor = colorText;
+                break;
+            case nameof(AppConfig.TalkHighlightBackgroundColor):
+                _talkHighlightBackgroundColor = colorText;
                 break;
         }
     }
@@ -653,11 +692,15 @@ public partial class SettingsWindow : Window
         SetPreviewColor(PartyChatTextColorPreview, _partyChatTextColor);
         SetPreviewColor(GuildChatTextColorPreview, _guildChatTextColor);
         SetPreviewColor(NewbieChatTextColorPreview, _newbieChatTextColor);
+        SetPreviewColor(TalkChatTextColorPreview, _talkChatTextColor);
         SetPreviewColor(ChatBackgroundColorPreview, _chatBackgroundColor);
         SetPreviewColor(MenuBackgroundColorPreview, _menuBackgroundColor);
         SetPreviewColor(
             MentionHighlightColorPreview,
             _mentionHighlightColor);
+        SetPreviewColor(
+            TalkHighlightBackgroundColorPreview,
+            _talkHighlightBackgroundColor);
     }
 
     private static void SetPreviewColor(Border preview, string colorText)
@@ -693,14 +736,7 @@ public partial class SettingsWindow : Window
         object sender,
         RoutedEventArgs e)
     {
-        var dialog = new Microsoft.Win32.OpenFileDialog
-        {
-            Filter =
-                "音声ファイル (*.wav;*.mp3)|*.wav;*.mp3|" +
-                "WAVファイル (*.wav)|*.wav|" +
-                "MP3ファイル (*.mp3)|*.mp3|" +
-                "すべてのファイル (*.*)|*.*"
-        };
+        var dialog = CreateSoundFileDialog();
 
         if (dialog.ShowDialog(this) == true)
         {
@@ -720,13 +756,53 @@ public partial class SettingsWindow : Window
         object sender,
         RoutedEventArgs e)
     {
-        _mentionTestSoundPlayer.Play(
+        _notificationTestSoundPlayer.Play(
             MentionSoundFilePathTextBox.Text);
+    }
+
+    private static Microsoft.Win32.OpenFileDialog CreateSoundFileDialog()
+    {
+        return new Microsoft.Win32.OpenFileDialog
+        {
+            Filter =
+                "音声ファイル (*.wav;*.mp3)|*.wav;*.mp3|" +
+                "WAVファイル (*.wav)|*.wav|" +
+                "MP3ファイル (*.mp3)|*.mp3|" +
+                "すべてのファイル (*.*)|*.*"
+        };
+    }
+
+    private void BrowseTalkSoundButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        var dialog = CreateSoundFileDialog();
+
+        if (dialog.ShowDialog(this) == true)
+        {
+            TalkSoundFilePathTextBox.Text =
+                Path.GetFullPath(dialog.FileName);
+        }
+    }
+
+    private void ClearTalkSoundButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        TalkSoundFilePathTextBox.Text = string.Empty;
+    }
+
+    private void TestTalkSoundButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        _notificationTestSoundPlayer.Play(
+            TalkSoundFilePathTextBox.Text);
     }
 
     protected override void OnClosed(EventArgs e)
     {
-        _mentionTestSoundPlayer.Dispose();
+        _notificationTestSoundPlayer.Dispose();
         base.OnClosed(e);
     }
 }

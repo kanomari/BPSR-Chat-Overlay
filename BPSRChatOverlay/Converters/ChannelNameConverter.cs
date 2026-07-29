@@ -22,6 +22,7 @@ public sealed class ChannelNameConverter : IValueConverter
             2 => "Ch",
             3 => "P",
             4 => "G",
+            5 => "✉",
             9 => "N",
             _ => "?"
         };

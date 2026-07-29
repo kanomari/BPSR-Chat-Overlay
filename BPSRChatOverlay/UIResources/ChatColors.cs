@@ -11,9 +11,11 @@ public static class ChatColors
     public const string DefaultPartyChatTextColor = "#FF00BFFF";
     public const string DefaultGuildChatTextColor = "#FF9ACD32";
     public const string DefaultNewbieChatTextColor = "#FF808080";
+    public const string DefaultTalkChatTextColor = "#FFFFB6C1";
     public const string DefaultChatBackgroundColor = "#FF000000";
     public const string DefaultMenuBackgroundColor = "#FFF2F2F2";
     public const string DefaultMentionHighlightColor = "#60FFD54F";
+    public const string DefaultTalkHighlightColor = "#704B9CD3";
 
     public static Brush World { get; private set; } =
         CreateBrush(
@@ -40,6 +42,11 @@ public static class ChatColors
             DefaultNewbieChatTextColor,
             DefaultNewbieChatTextColor);
 
+    public static Brush Talk { get; private set; } =
+        CreateBrush(
+            DefaultTalkChatTextColor,
+            DefaultTalkChatTextColor);
+
     public static Brush Unknown { get; } = Brushes.White;
 
     public static Brush ChatBackground { get; private set; } = Brushes.Black;
@@ -52,15 +59,27 @@ public static class ChatColors
             DefaultMentionHighlightColor,
             DefaultMentionHighlightColor);
 
+    public static Brush TalkHighlight { get; private set; } =
+        CreateBrush(
+            DefaultTalkHighlightColor,
+            DefaultTalkHighlightColor);
+
+    public static Brush TalkHighlightDim { get; private set; } =
+        CreateDimmedBrush(
+            DefaultTalkHighlightColor,
+            DefaultTalkHighlightColor);
+
     public static void Apply(
         string? worldTextColor,
         string? channelTextColor,
         string? partyTextColor,
         string? guildTextColor,
         string? newbieTextColor,
+        string? talkTextColor,
         string? chatBackgroundColor,
         string? menuBackgroundColor,
-        string? mentionHighlightColor)
+        string? mentionHighlightColor,
+        string? talkHighlightBackgroundColor)
     {
         World = CreateBrush(
             worldTextColor,
@@ -77,6 +96,9 @@ public static class ChatColors
         Newbie = CreateBrush(
             newbieTextColor,
             DefaultNewbieChatTextColor);
+        Talk = CreateBrush(
+            talkTextColor,
+            DefaultTalkChatTextColor);
         ChatBackground = CreateBrush(
             chatBackgroundColor,
             DefaultChatBackgroundColor);
@@ -86,6 +108,12 @@ public static class ChatColors
         MentionHighlight = CreateBrush(
             mentionHighlightColor,
             DefaultMentionHighlightColor);
+        TalkHighlight = CreateBrush(
+            talkHighlightBackgroundColor,
+            DefaultTalkHighlightColor);
+        TalkHighlightDim = CreateDimmedBrush(
+            talkHighlightBackgroundColor,
+            DefaultTalkHighlightColor);
     }
 
     public static SolidColorBrush CreateBrush(
@@ -115,5 +143,18 @@ public static class ChatColors
             brush.Freeze();
             return brush;
         }
+    }
+
+    private static SolidColorBrush CreateDimmedBrush(
+        string? colorText,
+        string fallbackColor)
+    {
+        SolidColorBrush source = CreateBrush(colorText, fallbackColor);
+        Color color = source.Color;
+        color.A = (byte)Math.Round(color.A * 0.4);
+
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
     }
 }

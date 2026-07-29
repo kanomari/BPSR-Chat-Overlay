@@ -69,6 +69,8 @@ public sealed class AppConfig
 
     public bool ShowNewbieChat { get; set; } = true;
 
+    public bool ShowTalkChat { get; set; } = true;
+
     public string ChatFilterKeywords { get; set; } = string.Empty;
 
     public string WorldChatTextColor { get; set; } = "#FFBA55D3";
@@ -80,6 +82,8 @@ public sealed class AppConfig
     public string GuildChatTextColor { get; set; } = "#FF9ACD32";
 
     public string NewbieChatTextColor { get; set; } = "#FF808080";
+
+    public string TalkChatTextColor { get; set; } = "#FFFFB6C1";
 
     public string ChatBackgroundColor { get; set; } = "#FF000000";
 
@@ -94,6 +98,14 @@ public sealed class AppConfig
     public string MentionHighlightColor { get; set; } = "#60FFD54F";
 
     public string MentionSoundFilePath { get; set; } = string.Empty;
+
+    public bool EnableTalkHighlight { get; set; } = true;
+
+    public string TalkHighlightBackgroundColor { get; set; } = "#704B9CD3";
+
+    public bool EnableTalkSound { get; set; } = true;
+
+    public string TalkSoundFilePath { get; set; } = string.Empty;
 
     public bool ShowDebugPanel { get; set; } = false;
 

@@ -46,7 +46,7 @@ public partial class MainWindow : Window
     private readonly NetCap _netCap = new();
     private readonly List<ChatMessage> _chatHistory = [];
     private readonly HashSet<int> _reportedUnknownChannelTypes = [];
-    private readonly MentionSoundPlayer _mentionSoundPlayer = new();
+    private readonly NotificationSoundPlayer _notificationSoundPlayer = new();
     private readonly DispatcherTimer _statusTimer;
     private readonly DispatcherTimer _windowPlacementSaveTimer;
     private AppConfig _appConfig = new();
@@ -157,9 +157,11 @@ public partial class MainWindow : Window
             config.PartyChatTextColor,
             config.GuildChatTextColor,
             config.NewbieChatTextColor,
+            config.TalkChatTextColor,
             config.ChatBackgroundColor,
             config.MenuBackgroundColor,
-            config.MentionHighlightColor);
+            config.MentionHighlightColor,
+            config.TalkHighlightBackgroundColor);
         ChatListBox.FontSize = Math.Clamp(config.FontSize, 8, 48);
         Resources["TimeColumnWidth"] = new GridLength(Math.Clamp(
             config.TimeColumnWidth,
@@ -598,6 +600,28 @@ public partial class MainWindow : Window
 
     private void OnChatReceived(ChatMessage message)
     {
+        if (message.ChannelType ==
+            (int)Zproto.ChitChatChannelType.ChannelPrivate)
+        {
+            ProcessTalkMessage(message);
+            return;
+        }
+
+        ProcessNormalChatMessage(message);
+    }
+
+    private void ProcessTalkMessage(ChatMessage message)
+    {
+        QueueChatMessage(message, isTalk: true);
+    }
+
+    private void ProcessNormalChatMessage(ChatMessage message)
+    {
+        QueueChatMessage(message, isTalk: false);
+    }
+
+    private void QueueChatMessage(ChatMessage message, bool isTalk)
+    {
         /*
          * ChatReceivedは画面とは別のスレッドから呼ばれる可能性があります。
          * WPFの画面更新はUIスレッドで行う必要があるため、
@@ -610,25 +634,35 @@ public partial class MainWindow : Window
                 try
                 {
                     LogUnknownChannelType(message.ChannelType);
-                    message.IsMention = IsMentionMessage(message);
-                    _chatHistory.Add(message);
-
-                    while (_chatHistory.Count > MaxChatMessageCount)
+                    if (isTalk)
                     {
-                        ChatMessage oldestMessage = _chatHistory[0];
-                        _chatHistory.RemoveAt(0);
-                        ChatMessages.Remove(oldestMessage);
+                        message.IsMention = false;
+                        message.IsTalkHighlighted =
+                            _appConfig.EnableTalkHighlight;
+
+                        if (_appConfig.EnableTalkSound)
+                        {
+                            _notificationSoundPlayer.Play(
+                                _appConfig.TalkSoundFilePath);
+                        }
+                    }
+                    else
+                    {
+                        message.IsMention = IsMentionMessage(message);
+
+                        if (message.IsMention &&
+                            _appConfig.EnableMentionSound)
+                        {
+                            _notificationSoundPlayer.Play(
+                                _appConfig.MentionSoundFilePath);
+                        }
                     }
 
-                    if (message.IsMention &&
-                        _appConfig.EnableMentionSound)
-                    {
-                        _mentionSoundPlayer.Play(
-                            _appConfig.MentionSoundFilePath);
-                    }
+                    AddToChatHistory(message);
 
-                    bool shouldDisplay =
-                        ShouldDisplayChatMessage(message);
+                    bool shouldDisplay = isTalk
+                        ? _appConfig.ShowTalkChat
+                        : ShouldDisplayChatMessage(message);
 
                     if (shouldDisplay)
                     {
@@ -641,7 +675,19 @@ public partial class MainWindow : Window
                     if (shouldDisplay)
                     {
                         ChatListBox.ScrollIntoView(message);
-                        BeginNewChatHighlight(message);
+                        if (isTalk && message.IsTalkHighlighted)
+                        {
+                            BeginTalkHighlight(message);
+                        }
+                        else if (!isTalk)
+                        {
+                            BeginNewChatHighlight(message);
+                        }
+                    }
+                    else if (isTalk && message.IsTalkHighlighted)
+                    {
+                        // 非表示中も履歴上の点灯状態は保持します。
+                        message.IsTalkHighlightVisible = true;
                     }
                 }
                 catch (Exception ex) when (IsRecoverableException(ex))
@@ -661,6 +707,42 @@ public partial class MainWindow : Window
                 "Failed to queue a chat message for UI processing. ChannelType: {ChannelType}, HasSenderName: {HasSenderName}",
                 message.ChannelType,
                 !string.IsNullOrEmpty(message.SenderName));
+        }
+    }
+
+    private void AddToChatHistory(ChatMessage message)
+    {
+        _chatHistory.Add(message);
+
+        while (_chatHistory.Count > MaxChatMessageCount)
+        {
+            ChatMessage oldestMessage = _chatHistory[0];
+            _chatHistory.RemoveAt(0);
+            ChatMessages.Remove(oldestMessage);
+        }
+    }
+
+    private async void BeginTalkHighlight(ChatMessage message)
+    {
+        try
+        {
+            const int blinkCount = 3;
+            TimeSpan interval = TimeSpan.FromMilliseconds(400);
+
+            for (int index = 0; index < blinkCount; index++)
+            {
+                message.IsTalkHighlightVisible = true;
+                await Task.Delay(interval);
+                message.IsTalkHighlightVisible = false;
+                await Task.Delay(interval);
+            }
+
+            message.IsTalkHighlightVisible = true;
+        }
+        catch (Exception ex) when (IsRecoverableException(ex))
+        {
+            Log.Error(ex, "Failed to animate talk highlighting");
+            message.IsTalkHighlightVisible = true;
         }
     }
 
@@ -728,6 +810,8 @@ public partial class MainWindow : Window
                 _appConfig.ShowChannelChat,
             (int)Zproto.ChitChatChannelType.ChannelTeam =>
                 _appConfig.ShowPartyChat,
+            (int)Zproto.ChitChatChannelType.ChannelPrivate =>
+                _appConfig.ShowTalkChat,
             (int)Zproto.ChitChatChannelType.ChannelUnion =>
                 _appConfig.ShowGuildChat,
             (int)Zproto.ChitChatChannelType.ChannelNewbie =>
@@ -735,7 +819,10 @@ public partial class MainWindow : Window
             _ => true
         };
 
-        return matchesChannelFilter && MatchesKeywordFilter(message);
+        return message.ChannelType ==
+            (int)Zproto.ChitChatChannelType.ChannelPrivate
+            ? matchesChannelFilter
+            : matchesChannelFilter && MatchesKeywordFilter(message);
     }
 
     private void LogUnknownChannelType(int channelType)
@@ -758,6 +845,7 @@ public partial class MainWindow : Window
             (int)Zproto.ChitChatChannelType.ChannelScene or
             (int)Zproto.ChitChatChannelType.ChannelTeam or
             (int)Zproto.ChitChatChannelType.ChannelUnion or
+            (int)Zproto.ChitChatChannelType.ChannelPrivate or
             (int)Zproto.ChitChatChannelType.ChannelNewbie;
     }
 
@@ -778,7 +866,9 @@ public partial class MainWindow : Window
 
     private bool IsMentionMessage(ChatMessage message)
     {
-        if (!_appConfig.EnableMentionNotification ||
+        if (message.ChannelType ==
+                (int)Zproto.ChitChatChannelType.ChannelPrivate ||
+            !_appConfig.EnableMentionNotification ||
             _mentionKeywords.Length == 0)
         {
             return false;
@@ -917,7 +1007,7 @@ public partial class MainWindow : Window
             "Failed to unsubscribe chat event");
 
         RunShutdownAction(
-            _mentionSoundPlayer.Dispose,
+            _notificationSoundPlayer.Dispose,
             "Failed to dispose mention sound player");
 
         RunShutdownAction(

@@ -18,7 +18,7 @@
     <Window.Resources>
         <converters:ChannelNameConverter x:Key="ChannelNameConverter"/>
         <converters:ChannelBrushConverter x:Key="ChannelBrushConverter"/>
-        <converters:MentionHighlightConverter x:Key="MentionHighlightConverter"/>
+        <converters:ChatHighlightConverter x:Key="ChatHighlightConverter"/>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <system:Double x:Key="ChatTextOpacity">1.0</system:Double>
         <system:Double x:Key="WindowDecorationOpacity">1.0</system:Double>
@@ -406,8 +406,14 @@
                                 <DataTemplate>
                                     <Border
                                         Margin="{StaticResource ChatRowMargin}"
-                                        CornerRadius="2"
-                                        Background="{Binding IsMention, Converter={StaticResource MentionHighlightConverter}}">
+                                        CornerRadius="2">
+                                        <Border.Background>
+                                            <MultiBinding Converter="{StaticResource ChatHighlightConverter}">
+                                                <Binding Path="IsMention"/>
+                                                <Binding Path="IsTalkHighlightVisible"/>
+                                                <Binding Path="IsTalkHighlighted"/>
+                                            </MultiBinding>
+                                        </Border.Background>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="{DynamicResource LeftChatColorBandWidth}"/>

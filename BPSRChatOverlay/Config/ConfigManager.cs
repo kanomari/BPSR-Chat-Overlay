@@ -458,6 +458,10 @@ public static class ConfigManager
             config.NewbieChatTextColor,
             defaults.NewbieChatTextColor,
             nameof(AppConfig.NewbieChatTextColor));
+        config.TalkChatTextColor = NormalizeString(
+            config.TalkChatTextColor,
+            defaults.TalkChatTextColor,
+            nameof(AppConfig.TalkChatTextColor));
         config.ChatBackgroundColor = NormalizeString(
             config.ChatBackgroundColor,
             defaults.ChatBackgroundColor,
@@ -474,10 +478,18 @@ public static class ConfigManager
             config.MentionHighlightColor,
             defaults.MentionHighlightColor,
             nameof(AppConfig.MentionHighlightColor));
+        config.TalkHighlightBackgroundColor = NormalizeString(
+            config.TalkHighlightBackgroundColor,
+            defaults.TalkHighlightBackgroundColor,
+            nameof(AppConfig.TalkHighlightBackgroundColor));
         config.MentionSoundFilePath = NormalizeString(
             config.MentionSoundFilePath,
             defaults.MentionSoundFilePath,
             nameof(AppConfig.MentionSoundFilePath));
+        config.TalkSoundFilePath = NormalizeString(
+            config.TalkSoundFilePath,
+            defaults.TalkSoundFilePath,
+            nameof(AppConfig.TalkSoundFilePath));
     }
 
     private static string NormalizeString(
