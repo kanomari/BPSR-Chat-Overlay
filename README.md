@@ -29,7 +29,19 @@ Npcapでゲームの通信を読み取る方式のため、ゲームクライア
 
 ## スクリーンショット
 
+### Overlay
+
 ![BPSR Chat Overlay v0.2.0 Betaの表示例](docs/images/bpsr-chat-overlay-v0.2.0-beta.png)
+
+### 設定画面
+
+表示設定：
+
+![BPSR Chat Overlayの表示設定](docs/images/settings-display-v0.2.0-beta.png)
+
+フィルター設定：
+
+![BPSR Chat Overlayのフィルター設定](docs/images/settings-filter-v0.2.0-beta.png)
 
 ## 動作環境
 
@@ -160,9 +172,6 @@ VPNや仮想ネットワークアダプターを使用している場合、ゲ�
 - ゲームや通信仕様の更新により動作しなくなる可能性があります。
 - すべてのPC、ネットワーク構成、ゲーム提供地域での動作を保証するものではありません。
 - 過負荷時はメモリ使用量の増加を防ぐため、Npcapで取得したコピーのうち、本アプリ内部で解析待ちになっているデータの一部を破棄することがあります。PCやゲームが送受信する通信データには影響しません。
-- 不具合は[GitHub Issues](https://github.com/kanomari/BPSR-Chat-Overlay/issues)で報告してください。
-
-不具合報告には、アプリのバージョン、Windowsのバージョン、接続方式（有線・Wi-Fi・VPN）、発生手順、ログの該当箇所があると調査しやすくなります。チャット本文、ユーザー名、IPアドレスなどの個人情報は投稿しないでください。
 
 ## 開発者向け
 
