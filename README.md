@@ -27,6 +27,10 @@ Npcapでゲームの通信を読み取る方式のため、ゲームクライア
 
 表示するチャットは最大500件です。上限を超えた古いチャットは画面から順次削除されます。
 
+## スクリーンショット
+
+![BPSR Chat Overlay v0.2.0 Betaの表示例](docs/images/bpsr-chat-overlay-v0.2.0-beta.png)
+
 ## 動作環境
 
 - Windows 11（64ビット）
