@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -200,6 +201,10 @@ public partial class MainWindow : Window
         DebugPanel.Visibility = config.ShowDebugPanel
             ? Visibility.Visible
             : Visibility.Collapsed;
+        ChatTogglePanel.Visibility = config.ShowChatToggleButtons
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        UpdateChatToggleButtonStates();
         Topmost = config.TopMost;
 
         if (_windowHandle == IntPtr.Zero)
@@ -244,6 +249,64 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ChatToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ToggleButton
+            {
+                Tag: string chatType
+            } toggleButton)
+        {
+            return;
+        }
+
+        bool isEnabled = toggleButton.IsChecked == true;
+
+        switch (chatType)
+        {
+            case "World":
+                _appConfig.ShowWorldChat = isEnabled;
+                break;
+            case "Guild":
+                _appConfig.ShowGuildChat = isEnabled;
+                break;
+            case "Party":
+                _appConfig.ShowPartyChat = isEnabled;
+                break;
+            case "Channel":
+                _appConfig.ShowChannelChat = isEnabled;
+                break;
+            case "Newbie":
+                _appConfig.ShowNewbieChat = isEnabled;
+                break;
+            case "Talk":
+                _appConfig.ShowTalkChat = isEnabled;
+                break;
+            default:
+                return;
+        }
+
+        RebuildDisplayedChatMessages();
+        SaveConfigSafely(_appConfig);
+    }
+
+    private void UpdateChatToggleButtonStates()
+    {
+        foreach (ToggleButton toggleButton in
+                 ChatTogglePanel.Children.OfType<ToggleButton>())
+        {
+            toggleButton.IsChecked = toggleButton.Tag switch
+            {
+                "World" => _appConfig.ShowWorldChat,
+                "Guild" => _appConfig.ShowGuildChat,
+                "Party" => _appConfig.ShowPartyChat,
+                "Channel" => _appConfig.ShowChannelChat,
+                "Newbie" => _appConfig.ShowNewbieChat,
+                "Talk" => _appConfig.ShowTalkChat,
+                _ => false
+            };
+        }
+    }
+
     private void TitleBarRoot_PreviewMouseLeftButtonDown(
         object sender,
         MouseButtonEventArgs e)
@@ -272,7 +335,7 @@ public partial class MainWindow : Window
 
         while (current is not null)
         {
-            if (current is Button)
+            if (current is ButtonBase)
             {
                 return true;
             }

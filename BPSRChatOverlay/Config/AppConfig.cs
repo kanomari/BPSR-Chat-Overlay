@@ -42,6 +42,8 @@ public sealed class AppConfig
 
     public bool HighlightNewChatRows { get; set; } = true;
 
+    public bool ShowChatToggleButtons { get; set; } = true;
+
     public bool ShowChatSeparators { get; set; } = true;
 
     public bool ShowChatZebraStripes { get; set; } = true;

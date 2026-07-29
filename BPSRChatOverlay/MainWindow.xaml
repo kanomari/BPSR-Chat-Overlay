@@ -60,6 +60,12 @@
         <SolidColorBrush x:Key="TitleButtonForegroundBrush" Color="#FFAEB6C2"/>
         <SolidColorBrush x:Key="TitleButtonHoverBrush" Color="#FF242B35"/>
         <SolidColorBrush x:Key="CloseButtonHoverBrush" Color="#FFC42B3A"/>
+        <SolidColorBrush x:Key="ChatToggleOnBackgroundBrush" Color="#E63A4656"/>
+        <SolidColorBrush x:Key="ChatToggleOffBackgroundBrush" Color="#B0181E27"/>
+        <SolidColorBrush x:Key="ChatToggleBorderBrush" Color="#B06E7B8B"/>
+        <SolidColorBrush x:Key="ChatToggleOffBorderBrush" Color="#90505A66"/>
+        <SolidColorBrush x:Key="ChatToggleOnForegroundBrush" Color="#FFFFFFFF"/>
+        <SolidColorBrush x:Key="ChatToggleOffForegroundBrush" Color="#FF89939F"/>
         <SolidColorBrush x:Key="TimestampBrush" Color="#FF929AA5"/>
         <SolidColorBrush x:Key="ChatSeparatorBrush" Color="#26FFFFFF"/>
         <SolidColorBrush x:Key="ChatZebraStripeEnabledBrush" Color="#18162232"/>
@@ -79,6 +85,10 @@
         <GridLength x:Key="LeftChatColorBandWidth">3</GridLength>
         <GridLength x:Key="RightChatColorBandWidth">0</GridLength>
         <system:Double x:Key="TitleButtonWidth">28</system:Double>
+        <system:Double x:Key="ChatToggleButtonWidth">26</system:Double>
+        <system:Double x:Key="ChatToggleButtonHeight">16</system:Double>
+        <Thickness x:Key="ChatToggleButtonMargin">1.5,0</Thickness>
+        <Thickness x:Key="ChatToggleGroupMargin">0,0,12,0</Thickness>
         <system:Double x:Key="TimestampFontSize">11.5</system:Double>
 
         <Style x:Key="TransparentTrackButtonStyle" TargetType="RepeatButton">
@@ -167,6 +177,46 @@
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="{StaticResource CloseButtonHoverBrush}"/>
                     <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ChatToggleButtonStyle" TargetType="ToggleButton">
+            <Setter Property="Width" Value="{StaticResource ChatToggleButtonWidth}"/>
+            <Setter Property="Height" Value="{StaticResource ChatToggleButtonHeight}"/>
+            <Setter Property="Margin" Value="{StaticResource ChatToggleButtonMargin}"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="{StaticResource ChatToggleOffForegroundBrush}"/>
+            <Setter Property="Background" Value="{StaticResource ChatToggleOffBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ChatToggleOffBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="3">
+                            <ContentPresenter
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource ChatToggleOnForegroundBrush}"/>
+                    <Setter Property="Background" Value="{StaticResource ChatToggleOnBackgroundBrush}"/>
+                    <Setter Property="BorderBrush" Value="{StaticResource ChatToggleBorderBrush}"/>
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="White"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -298,13 +348,53 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
                         <Border
                             Background="Transparent"/>
 
-                        <Button
+                        <StackPanel
+                            x:Name="ChatTogglePanel"
                             Grid.Column="1"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            Margin="{StaticResource ChatToggleGroupMargin}">
+                            <ToggleButton Content="W"
+                                          Tag="World"
+                                          ToolTip="ワールド"
+                                          Style="{StaticResource ChatToggleButtonStyle}"
+                                          Click="ChatToggleButton_Click"/>
+                            <ToggleButton Content="G"
+                                          Tag="Guild"
+                                          ToolTip="ギルド"
+                                          Style="{StaticResource ChatToggleButtonStyle}"
+                                          Click="ChatToggleButton_Click"/>
+                            <ToggleButton Content="P"
+                                          Tag="Party"
+                                          ToolTip="パーティ"
+                                          Style="{StaticResource ChatToggleButtonStyle}"
+                                          Click="ChatToggleButton_Click"/>
+                            <ToggleButton Content="Ch"
+                                          Tag="Channel"
+                                          ToolTip="チャンネル"
+                                          Style="{StaticResource ChatToggleButtonStyle}"
+                                          Click="ChatToggleButton_Click"/>
+                            <ToggleButton Content="N"
+                                          Tag="Newbie"
+                                          ToolTip="初心者チャット"
+                                          Style="{StaticResource ChatToggleButtonStyle}"
+                                          Click="ChatToggleButton_Click"/>
+                            <ToggleButton Content="✉"
+                                          Tag="Talk"
+                                          ToolTip="トーク"
+                                          Style="{StaticResource ChatToggleButtonStyle}"
+                                          Click="ChatToggleButton_Click"/>
+                        </StackPanel>
+
+                        <Button
+                            Grid.Column="2"
                             Content="&#xE713;"
                             FontFamily="Segoe MDL2 Assets"
                             FontSize="11"
@@ -312,7 +402,7 @@
                             Click="SettingsButton_Click"/>
 
                         <Button
-                            Grid.Column="2"
+                            Grid.Column="3"
                             Content="×"
                             FontSize="14"
                             Style="{StaticResource CloseButtonStyle}"

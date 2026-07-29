@@ -87,6 +87,8 @@ public partial class SettingsWindow : Window
         ClickThroughCheckBox.IsChecked = currentConfig.ClickThrough;
         HighlightNewChatRowsCheckBox.IsChecked =
             currentConfig.HighlightNewChatRows;
+        ShowChatToggleButtonsCheckBox.IsChecked =
+            currentConfig.ShowChatToggleButtons;
         ShowChatSeparatorsCheckBox.IsChecked =
             currentConfig.ShowChatSeparators;
         ShowChatZebraStripesCheckBox.IsChecked =
@@ -358,6 +360,8 @@ public partial class SettingsWindow : Window
             ClickThrough = ClickThroughCheckBox.IsChecked == true,
             HighlightNewChatRows =
                 HighlightNewChatRowsCheckBox.IsChecked == true,
+            ShowChatToggleButtons =
+                ShowChatToggleButtonsCheckBox.IsChecked == true,
             ShowChatSeparators =
                 ShowChatSeparatorsCheckBox.IsChecked == true,
             ShowChatZebraStripes =
