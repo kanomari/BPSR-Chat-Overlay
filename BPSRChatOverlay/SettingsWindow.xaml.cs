@@ -1,9 +1,11 @@
 using System.Globalization;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Navigation;
 using BPSRChatOverlay.Config;
 using BPSRChatOverlay.Models;
 using BPSRChatOverlay.UIResources;
@@ -15,6 +17,9 @@ namespace BPSRChatOverlay;
 
 public partial class SettingsWindow : Window
 {
+    private const string GitHubProjectUrl =
+        "https://github.com/kanomari/BPSR-Chat-Overlay";
+
     private readonly AppConfig _currentConfig;
     private readonly NotificationSoundPlayer _notificationTestSoundPlayer = new();
     private readonly List<CaptureDeviceOption> _captureDeviceOptions = [];
@@ -630,6 +635,67 @@ public partial class SettingsWindow : Window
     private void CancelButton_Click(object sender, RoutedEventArgs e)
     {
         DialogResult = false;
+    }
+
+    private void GitHubProjectLink_RequestNavigate(
+        object sender,
+        RequestNavigateEventArgs e)
+    {
+        OpenExternalTarget(e.Uri?.AbsoluteUri ?? GitHubProjectUrl);
+        e.Handled = true;
+    }
+
+    private void OpenDataFolderButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        try
+        {
+            Directory.CreateDirectory(AppPaths.DataDirectory);
+            OpenExternalTarget(AppPaths.DataDirectory);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(
+                ex,
+                "Failed to create the settings and log directory. DataDirectory: {DataDirectory}",
+                AppPaths.DataDirectory);
+            ShowExternalTargetError(
+                "設定・ログフォルダーを開けませんでした。",
+                ex);
+        }
+    }
+
+    private void OpenExternalTarget(string target)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = target,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(
+                ex,
+                "Failed to open an external target. Target: {Target}",
+                target);
+            ShowExternalTargetError(
+                "リンクまたはフォルダーを開けませんでした。",
+                ex);
+        }
+    }
+
+    private void ShowExternalTargetError(string message, Exception ex)
+    {
+        MessageBox.Show(
+            this,
+            $"{message}\n\n{ex.Message}",
+            "BPSR Chat Overlay",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
     }
 
     private void ColorButton_Click(object sender, RoutedEventArgs e)
