@@ -434,6 +434,10 @@ public static class ConfigManager
         AppConfig config,
         AppConfig defaults)
     {
+        config.ChatFontFamily = NormalizeString(
+            config.ChatFontFamily,
+            defaults.ChatFontFamily,
+            nameof(AppConfig.ChatFontFamily));
         config.ChatFilterKeywords = NormalizeString(
             config.ChatFilterKeywords,
             defaults.ChatFilterKeywords,
@@ -478,6 +482,10 @@ public static class ConfigManager
             config.MentionHighlightColor,
             defaults.MentionHighlightColor,
             nameof(AppConfig.MentionHighlightColor));
+        config.ChatTextShadowColor = NormalizeString(
+            config.ChatTextShadowColor,
+            defaults.ChatTextShadowColor,
+            nameof(AppConfig.ChatTextShadowColor));
         config.TalkHighlightBackgroundColor = NormalizeString(
             config.TalkHighlightBackgroundColor,
             defaults.TalkHighlightBackgroundColor,

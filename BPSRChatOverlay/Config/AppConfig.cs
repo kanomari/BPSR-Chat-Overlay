@@ -27,6 +27,10 @@ public sealed class AppConfig
 
     public int FontSize { get; set; } = 15;
 
+    public string ChatFontFamily { get; set; } = "Meiryo UI";
+
+    public bool EnableBoldMessageText { get; set; } = false;
+
     public int TimeColumnWidth { get; set; } = DefaultTimeColumnWidth;
 
     public int SenderNameColumnWidth { get; set; } =
@@ -41,6 +45,10 @@ public sealed class AppConfig
     public bool ClickThrough { get; set; } = false;
 
     public bool HighlightNewChatRows { get; set; } = true;
+
+    public bool EnableChatTextShadow { get; set; } = true;
+
+    public string ChatTextShadowColor { get; set; } = "#FF203040";
 
     public bool ShowChatToggleButtons { get; set; } = true;
 

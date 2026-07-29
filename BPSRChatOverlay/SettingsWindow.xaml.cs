@@ -27,6 +27,7 @@ public partial class SettingsWindow : Window
     private string _chatBackgroundColor;
     private string _menuBackgroundColor;
     private string _mentionHighlightColor;
+    private string _chatTextShadowColor;
     private string _talkHighlightBackgroundColor;
 
     public AppConfig? SavedConfig { get; private set; }
@@ -65,12 +66,16 @@ public partial class SettingsWindow : Window
         _mentionHighlightColor = NormalizeColorText(
             currentConfig.MentionHighlightColor,
             ChatColors.DefaultMentionHighlightColor);
+        _chatTextShadowColor = NormalizeColorText(
+            currentConfig.ChatTextShadowColor,
+            ChatColors.DefaultChatTextShadowColor);
         _talkHighlightBackgroundColor = NormalizeColorText(
             currentConfig.TalkHighlightBackgroundColor,
             ChatColors.DefaultTalkHighlightColor);
 
         FontSizeTextBox.Text =
             currentConfig.FontSize.ToString(CultureInfo.CurrentCulture);
+        InitializeChatFontChoices(currentConfig.ChatFontFamily);
         TimeColumnWidthTextBox.Text =
             currentConfig.TimeColumnWidth.ToString(CultureInfo.CurrentCulture);
         SenderNameColumnWidthTextBox.Text =
@@ -87,6 +92,10 @@ public partial class SettingsWindow : Window
         ClickThroughCheckBox.IsChecked = currentConfig.ClickThrough;
         HighlightNewChatRowsCheckBox.IsChecked =
             currentConfig.HighlightNewChatRows;
+        EnableChatTextShadowCheckBox.IsChecked =
+            currentConfig.EnableChatTextShadow;
+        EnableBoldMessageTextCheckBox.IsChecked =
+            currentConfig.EnableBoldMessageText;
         ShowChatToggleButtonsCheckBox.IsChecked =
             currentConfig.ShowChatToggleButtons;
         ShowChatSeparatorsCheckBox.IsChecked =
@@ -352,6 +361,11 @@ public partial class SettingsWindow : Window
                 ?? _currentConfig.CaptureDeviceName,
             ExeNames = [.. _currentConfig.ExeNames],
             FontSize = fontSize,
+            ChatFontFamily =
+                ChatFontFamilyComboBox.SelectedItem as string
+                ?? ChatFontCatalog.DefaultFontFamilyName,
+            EnableBoldMessageText =
+                EnableBoldMessageTextCheckBox.IsChecked == true,
             TimeColumnWidth = timeColumnWidth,
             SenderNameColumnWidth = senderNameColumnWidth,
             BackgroundOpacity = backgroundOpacity,
@@ -360,6 +374,9 @@ public partial class SettingsWindow : Window
             ClickThrough = ClickThroughCheckBox.IsChecked == true,
             HighlightNewChatRows =
                 HighlightNewChatRowsCheckBox.IsChecked == true,
+            EnableChatTextShadow =
+                EnableChatTextShadowCheckBox.IsChecked == true,
+            ChatTextShadowColor = _chatTextShadowColor,
             ShowChatToggleButtons =
                 ShowChatToggleButtonsCheckBox.IsChecked == true,
             ShowChatSeparators =
@@ -412,6 +429,27 @@ public partial class SettingsWindow : Window
         };
 
         DialogResult = true;
+    }
+
+    private void InitializeChatFontChoices(string? configuredFontFamilyName)
+    {
+        IReadOnlyList<string> availableNames =
+            ChatFontCatalog.GetAvailableFontFamilyNames(
+                configuredFontFamilyName);
+        ChatFontFamilyComboBox.ItemsSource = availableNames;
+
+        string resolvedName =
+            ChatFontCatalog.Resolve(configuredFontFamilyName).Source;
+        ChatFontFamilyComboBox.SelectedItem = availableNames.FirstOrDefault(
+            name => string.Equals(
+                name,
+                configuredFontFamilyName?.Trim(),
+                StringComparison.OrdinalIgnoreCase))
+            ?? availableNames.FirstOrDefault(name => string.Equals(
+                name,
+                resolvedName,
+                StringComparison.OrdinalIgnoreCase))
+            ?? availableNames[0];
     }
 
     private void ReloadCaptureDevicesButton_Click(
@@ -646,6 +684,8 @@ public partial class SettingsWindow : Window
             nameof(AppConfig.MenuBackgroundColor) => _menuBackgroundColor,
             nameof(AppConfig.MentionHighlightColor) =>
                 _mentionHighlightColor,
+            nameof(AppConfig.ChatTextShadowColor) =>
+                _chatTextShadowColor,
             nameof(AppConfig.TalkHighlightBackgroundColor) =>
                 _talkHighlightBackgroundColor,
             _ => ChatColors.DefaultChatTextColor
@@ -683,6 +723,9 @@ public partial class SettingsWindow : Window
             case nameof(AppConfig.MentionHighlightColor):
                 _mentionHighlightColor = colorText;
                 break;
+            case nameof(AppConfig.ChatTextShadowColor):
+                _chatTextShadowColor = colorText;
+                break;
             case nameof(AppConfig.TalkHighlightBackgroundColor):
                 _talkHighlightBackgroundColor = colorText;
                 break;
@@ -702,6 +745,9 @@ public partial class SettingsWindow : Window
         SetPreviewColor(
             MentionHighlightColorPreview,
             _mentionHighlightColor);
+        SetPreviewColor(
+            ChatTextShadowColorPreview,
+            _chatTextShadowColor);
         SetPreviewColor(
             TalkHighlightBackgroundColorPreview,
             _talkHighlightBackgroundColor);

@@ -75,6 +75,15 @@
         <SolidColorBrush x:Key="ScrollThumbBrush" Color="#665F6975"/>
         <SolidColorBrush x:Key="ScrollThumbHoverBrush" Color="#99798594"/>
         <SolidColorBrush x:Key="ScrollThumbDraggingBrush" Color="#CC929EAD"/>
+        <Color x:Key="ChatTextShadowColor">#FF203040</Color>
+        <DropShadowEffect
+            x:Key="ChatTextShadowEffect"
+            Color="{DynamicResource ChatTextShadowColor}"
+            Opacity="0.30"
+            Direction="315"
+            ShadowDepth="1"
+            BlurRadius="1.5"
+            RenderingBias="Performance"/>
         <Thickness x:Key="ContentMargin">4</Thickness>
         <Thickness x:Key="ChatRowMargin">4,1</Thickness>
         <Thickness x:Key="ChatRowPadding">3,2</Thickness>
@@ -218,6 +227,31 @@
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="BorderBrush" Value="White"/>
                 </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ChatRowTextGridStyle" TargetType="Grid">
+            <Setter Property="Effect"
+                    Value="{StaticResource ChatTextShadowEffect}"/>
+            <Style.Triggers>
+                <DataTrigger
+                    Binding="{Binding Tag.EnableChatTextShadow,
+                                      RelativeSource={RelativeSource AncestorType=ListBox}}"
+                    Value="False">
+                    <Setter Property="Effect" Value="{x:Null}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ChatMessageTextBlockStyle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Style.Triggers>
+                <DataTrigger
+                    Binding="{Binding Tag.EnableBoldMessageText,
+                                      RelativeSource={RelativeSource AncestorType=ListBox}}"
+                    Value="True">
+                    <Setter Property="FontWeight" Value="Bold"/>
+                </DataTrigger>
             </Style.Triggers>
         </Style>
 
@@ -518,6 +552,7 @@
 
                                             <Grid
                                                 Grid.Column="1"
+                                                Style="{StaticResource ChatRowTextGridStyle}"
                                                 Margin="{StaticResource ChatRowPadding}"
                                                 Opacity="{DynamicResource ChatTextOpacity}">
                                                 <Grid.ColumnDefinitions>
@@ -556,7 +591,7 @@
                                                     Grid.Column="3"
                                                     Text="{Binding Message}"
                                                     Foreground="{Binding ChannelType, Converter={StaticResource ChannelBrushConverter}, ConverterParameter=ChatText}"
-                                                    FontWeight="Normal"
+                                                    Style="{StaticResource ChatMessageTextBlockStyle}"
                                                     TextWrapping="Wrap"
                                                     VerticalAlignment="Top"/>
                                             </Grid>

@@ -15,6 +15,7 @@ public static class ChatColors
     public const string DefaultChatBackgroundColor = "#FF000000";
     public const string DefaultMenuBackgroundColor = "#FFF2F2F2";
     public const string DefaultMentionHighlightColor = "#60FFD54F";
+    public const string DefaultChatTextShadowColor = "#FF203040";
     public const string DefaultTalkHighlightColor = "#704B9CD3";
 
     public static Brush World { get; private set; } =

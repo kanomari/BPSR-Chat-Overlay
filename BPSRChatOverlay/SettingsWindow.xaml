@@ -648,6 +648,21 @@
                                                    Text="{Binding Value, ElementName=SenderNameColumnWidthSlider,
                                                                   StringFormat={}{0:0}px}"/>
                                     </Grid>
+
+                                    <TextBlock Grid.Row="6"
+                                               Text="チャットフォント"
+                                               Margin="0,16,0,0"/>
+                                    <ComboBox x:Name="ChatFontFamilyComboBox"
+                                              Grid.Row="6"
+                                              Grid.Column="1"
+                                              Margin="0,12,0,0">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}"
+                                                           FontFamily="{Binding}"/>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
                                 </Grid>
                             </Border>
 
@@ -659,6 +674,31 @@
                                               Content="クリック透過を有効にする"/>
                                     <CheckBox x:Name="HighlightNewChatRowsCheckBox"
                                               Content="新着チャットの背景を一時的に強調する"/>
+                                    <CheckBox x:Name="EnableChatTextShadowCheckBox"
+                                              Content="テキストに影を付ける"/>
+                                    <Grid Margin="24,4,0,6"
+                                          IsEnabled="{Binding IsChecked,
+                                                              ElementName=EnableChatTextShadowCheckBox}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="54"/>
+                                            <ColumnDefinition Width="86"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="影の色"/>
+                                        <Border x:Name="ChatTextShadowColorPreview"
+                                                Grid.Column="1"
+                                                Width="34"
+                                                Height="22"
+                                                BorderBrush="{DynamicResource SettingsBorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="3"/>
+                                        <Button Grid.Column="2"
+                                                Content="変更"
+                                                Tag="ChatTextShadowColor"
+                                                Click="ColorButton_Click"/>
+                                    </Grid>
+                                    <CheckBox x:Name="EnableBoldMessageTextCheckBox"
+                                              Content="本文を太字で表示する"/>
                                     <CheckBox x:Name="ShowChatToggleButtonsCheckBox"
                                               Content="Overlayにチャット切り替えボタンを表示する"/>
                                     <CheckBox x:Name="ShowChatSeparatorsCheckBox"

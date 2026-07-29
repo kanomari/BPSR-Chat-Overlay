@@ -163,6 +163,8 @@ public partial class MainWindow : Window
             config.MenuBackgroundColor,
             config.MentionHighlightColor,
             config.TalkHighlightBackgroundColor);
+        ChatListBox.FontFamily = ChatFontCatalog.Resolve(
+            config.ChatFontFamily);
         ChatListBox.FontSize = Math.Clamp(config.FontSize, 8, 48);
         Resources["TimeColumnWidth"] = new GridLength(Math.Clamp(
             config.TimeColumnWidth,
@@ -197,6 +199,9 @@ public partial class MainWindow : Window
             Math.Clamp(config.MenuBackgroundOpacity, 0.0, 1.0);
         Resources["ChatTextOpacity"] =
             Math.Clamp(config.TextOpacity, 0.0, 1.0);
+        Resources["ChatTextShadowColor"] = ChatColors.CreateBrush(
+            config.ChatTextShadowColor,
+            ChatColors.DefaultChatTextShadowColor).Color;
         MenuBackgroundBorder.Background = ChatColors.MenuBackground;
         DebugPanel.Visibility = config.ShowDebugPanel
             ? Visibility.Visible
