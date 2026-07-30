@@ -54,12 +54,17 @@
             </ColorAnimationUsingKeyFrames>
         </Storyboard>
 
-        <SolidColorBrush x:Key="WindowBorderBrush" Color="#FF303640"/>
+        <SolidColorBrush x:Key="WindowBorderBrush" Color="#59303640"/>
+        <SolidColorBrush x:Key="CollapseStructureBorderBrush" Color="#FF303640"/>
         <SolidColorBrush x:Key="TitleBarOverlayBrush" Color="#D9080B10"/>
         <SolidColorBrush x:Key="TitleBarDividerBrush" Color="#FF242A33"/>
         <SolidColorBrush x:Key="TitleButtonForegroundBrush" Color="#FFAEB6C2"/>
         <SolidColorBrush x:Key="TitleButtonHoverBrush" Color="#FF242B35"/>
         <SolidColorBrush x:Key="CloseButtonHoverBrush" Color="#FFC42B3A"/>
+        <SolidColorBrush x:Key="CollapsedHandleBackgroundBrush" Color="#40181E27"/>
+        <SolidColorBrush x:Key="CollapsedHandleBorderBrush" Color="#406E7B8B"/>
+        <SolidColorBrush x:Key="CollapsedHandleHoverBackgroundBrush" Color="#5F2A333F"/>
+        <SolidColorBrush x:Key="CollapsedHandleHoverBorderBrush" Color="#5F8E9CAC"/>
         <SolidColorBrush x:Key="ChatToggleOnBackgroundBrush" Color="#E63A4656"/>
         <SolidColorBrush x:Key="ChatToggleOffBackgroundBrush" Color="#B0181E27"/>
         <SolidColorBrush x:Key="ChatToggleBorderBrush" Color="#B06E7B8B"/>
@@ -198,6 +203,46 @@
                     <Setter Property="Foreground" Value="White"/>
                 </Trigger>
             </Style.Triggers>
+        </Style>
+
+        <Style x:Key="CollapsedHandleButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource CollapsedHandleBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CollapsedHandleBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="{StaticResource TitleButtonForegroundBrush}"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="HandleBorder"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="5">
+                            <ContentPresenter
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter
+                                    TargetName="HandleBorder"
+                                    Property="Background"
+                                    Value="{DynamicResource CollapsedHandleHoverBackgroundBrush}"/>
+                                <Setter
+                                    TargetName="HandleBorder"
+                                    Property="BorderBrush"
+                                    Value="{DynamicResource CollapsedHandleHoverBorderBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style x:Key="ChatToggleButtonStyle" TargetType="ToggleButton">
@@ -350,146 +395,148 @@
         CornerRadius="6">
 
         <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="{StaticResource TitleBarRowHeight}"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
+            <Grid x:Name="NormalUiRoot">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="{StaticResource TitleBarRowHeight}"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
 
-            <Border
-                Grid.RowSpan="2"
-                BorderBrush="{StaticResource WindowBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="6"
-                IsHitTestVisible="False"
-                Opacity="{DynamicResource WindowDecorationOpacity}"/>
-
-            <Grid
-                x:Name="TitleBarRoot"
-                Background="Transparent"
-                IsHitTestVisible="True"
-                PreviewMouseLeftButtonDown="TitleBarRoot_PreviewMouseLeftButtonDown">
-                <Grid
+                <Border
+                    Grid.RowSpan="2"
+                    BorderBrush="{StaticResource WindowBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
                     IsHitTestVisible="False"
-                    Opacity="{DynamicResource WindowDecorationOpacity}">
-                    <Border
-                        x:Name="MenuBackgroundBorder"
-                        Background="#FF080B10"
-                        CornerRadius="5,5,0,0"/>
+                    Opacity="{DynamicResource WindowDecorationOpacity}"/>
 
-                    <Border
-                        Background="{StaticResource TitleBarOverlayBrush}"
-                        CornerRadius="5,5,0,0"/>
+                <Grid
+                    x:Name="TitleBarRoot"
+                    Background="Transparent"
+                    IsHitTestVisible="True"
+                    PreviewMouseLeftButtonDown="TitleBarRoot_PreviewMouseLeftButtonDown">
+                    <Grid
+                        IsHitTestVisible="False"
+                        Opacity="{DynamicResource WindowDecorationOpacity}">
+                        <Border
+                            x:Name="MenuBackgroundBorder"
+                            Background="#FF080B10"
+                            CornerRadius="5,5,0,0"/>
 
-                    <Border
-                        BorderBrush="{StaticResource TitleBarDividerBrush}"
-                        BorderThickness="0,0,0,1"
-                        CornerRadius="5,5,0,0"/>
-                </Grid>
+                        <Border
+                            Background="{StaticResource TitleBarOverlayBrush}"
+                            CornerRadius="5,5,0,0"/>
 
-                <Grid Background="Transparent">
-                    <Grid>
+                        <Border
+                            BorderBrush="{StaticResource TitleBarDividerBrush}"
+                            BorderThickness="0,0,0,1"
+                            CornerRadius="5,5,0,0"/>
+                    </Grid>
+
+                    <Grid Background="Transparent">
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
-                        <Border
-                            Background="Transparent"/>
-
-                        <StackPanel
-                            x:Name="ChatTogglePanel"
-                            Grid.Column="1"
-                            Orientation="Horizontal"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Center"
-                            Margin="{StaticResource ChatToggleGroupMargin}">
-                            <ToggleButton Content="W"
-                                          Tag="World"
-                                          ToolTip="ワールド"
-                                          Style="{StaticResource ChatToggleButtonStyle}"
-                                          Click="ChatToggleButton_Click"/>
-                            <ToggleButton Content="G"
-                                          Tag="Guild"
-                                          ToolTip="ギルド"
-                                          Style="{StaticResource ChatToggleButtonStyle}"
-                                          Click="ChatToggleButton_Click"/>
-                            <ToggleButton Content="P"
-                                          Tag="Party"
-                                          ToolTip="パーティ"
-                                          Style="{StaticResource ChatToggleButtonStyle}"
-                                          Click="ChatToggleButton_Click"/>
-                            <ToggleButton Content="Ch"
-                                          Tag="Channel"
-                                          ToolTip="チャンネル"
-                                          Style="{StaticResource ChatToggleButtonStyle}"
-                                          Click="ChatToggleButton_Click"/>
-                            <ToggleButton Content="N"
-                                          Tag="Newbie"
-                                          ToolTip="初心者チャット"
-                                          Style="{StaticResource ChatToggleButtonStyle}"
-                                          Click="ChatToggleButton_Click"/>
-                            <ToggleButton Content="✉"
-                                          Tag="Talk"
-                                          ToolTip="トーク"
-                                          Style="{StaticResource ChatToggleButtonStyle}"
-                                          Click="ChatToggleButton_Click"/>
-                        </StackPanel>
-
-                        <StackPanel
-                            x:Name="FeatureTogglePanel"
-                            Grid.Column="2"
-                            Orientation="Horizontal"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Center"
-                            Margin="{StaticResource FeatureToggleGroupMargin}">
-                            <ToggleButton
-                                x:Name="ChatFilterToggleButton"
-                                Tag="ChatFilter"
-                                Style="{StaticResource ChatToggleButtonStyle}"
-                                Click="FeatureToggleButton_Click">
-                                <Viewbox Width="11" Height="11">
-                                    <Path
-                                        Data="{StaticResource FilterIconGeometry}"
-                                        Fill="{Binding Foreground,
-                                            RelativeSource={RelativeSource AncestorType={x:Type ToggleButton}}}"/>
-                                </Viewbox>
-                            </ToggleButton>
-                            <ToggleButton
-                                x:Name="MentionHighlightToggleButton"
-                                Tag="MentionHighlight"
-                                Style="{StaticResource ChatToggleButtonStyle}"
-                                Click="FeatureToggleButton_Click">
-                                <Viewbox Width="11" Height="11">
-                                    <Path
-                                        Data="{StaticResource HighlightIconGeometry}"
-                                        Fill="{Binding Foreground,
-                                            RelativeSource={RelativeSource AncestorType={x:Type ToggleButton}}}"/>
-                                </Viewbox>
-                            </ToggleButton>
-                        </StackPanel>
-
                         <Button
-                            Grid.Column="3"
-                            Content="&#xE713;"
-                            FontFamily="Segoe MDL2 Assets"
+                            x:Name="CollapseButton"
+                            Grid.Column="0"
+                            Width="32"
+                            Content="▲"
                             FontSize="11"
                             Style="{StaticResource TitleBarButtonStyle}"
-                            Click="SettingsButton_Click"/>
+                            Click="CollapseButton_Click"/>
 
-                        <Button
-                            Grid.Column="4"
-                            Content="×"
-                            FontSize="14"
-                            Style="{StaticResource CloseButtonStyle}"
-                            Click="ExitButton_Click"/>
+                        <StackPanel
+                            Grid.Column="2"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right">
+                            <StackPanel
+                                x:Name="ChatTogglePanel"
+                                Orientation="Horizontal"
+                                VerticalAlignment="Center"
+                                Margin="{StaticResource ChatToggleGroupMargin}">
+                                <ToggleButton Content="W"
+                                              Tag="World"
+                                              ToolTip="ワールド"
+                                              Style="{StaticResource ChatToggleButtonStyle}"
+                                              Click="ChatToggleButton_Click"/>
+                                <ToggleButton Content="G"
+                                              Tag="Guild"
+                                              ToolTip="ギルド"
+                                              Style="{StaticResource ChatToggleButtonStyle}"
+                                              Click="ChatToggleButton_Click"/>
+                                <ToggleButton Content="P"
+                                              Tag="Party"
+                                              ToolTip="パーティ"
+                                              Style="{StaticResource ChatToggleButtonStyle}"
+                                              Click="ChatToggleButton_Click"/>
+                                <ToggleButton Content="Ch"
+                                              Tag="Channel"
+                                              ToolTip="チャンネル"
+                                              Style="{StaticResource ChatToggleButtonStyle}"
+                                              Click="ChatToggleButton_Click"/>
+                                <ToggleButton Content="N"
+                                              Tag="Newbie"
+                                              ToolTip="初心者チャット"
+                                              Style="{StaticResource ChatToggleButtonStyle}"
+                                              Click="ChatToggleButton_Click"/>
+                                <ToggleButton Content="✉"
+                                              Tag="Talk"
+                                              ToolTip="トーク"
+                                              Style="{StaticResource ChatToggleButtonStyle}"
+                                              Click="ChatToggleButton_Click"/>
+                            </StackPanel>
+
+                            <StackPanel
+                                x:Name="FeatureTogglePanel"
+                                Orientation="Horizontal"
+                                VerticalAlignment="Center"
+                                Margin="{StaticResource FeatureToggleGroupMargin}">
+                                <ToggleButton
+                                    x:Name="ChatFilterToggleButton"
+                                    Tag="ChatFilter"
+                                    Style="{StaticResource ChatToggleButtonStyle}"
+                                    Click="FeatureToggleButton_Click">
+                                    <Viewbox Width="11" Height="11">
+                                        <Path
+                                            Data="{StaticResource FilterIconGeometry}"
+                                            Fill="{Binding Foreground,
+                                                RelativeSource={RelativeSource AncestorType={x:Type ToggleButton}}}"/>
+                                    </Viewbox>
+                                </ToggleButton>
+                                <ToggleButton
+                                    x:Name="MentionHighlightToggleButton"
+                                    Tag="MentionHighlight"
+                                    Style="{StaticResource ChatToggleButtonStyle}"
+                                    Click="FeatureToggleButton_Click">
+                                    <Viewbox Width="11" Height="11">
+                                        <Path
+                                            Data="{StaticResource HighlightIconGeometry}"
+                                            Fill="{Binding Foreground,
+                                                RelativeSource={RelativeSource AncestorType={x:Type ToggleButton}}}"/>
+                                    </Viewbox>
+                                </ToggleButton>
+                            </StackPanel>
+
+                            <Button
+                                Content="&#xE713;"
+                                FontFamily="Segoe MDL2 Assets"
+                                FontSize="11"
+                                Style="{StaticResource TitleBarButtonStyle}"
+                                Click="SettingsButton_Click"/>
+
+                            <Button
+                                Content="×"
+                                FontSize="14"
+                                Style="{StaticResource CloseButtonStyle}"
+                                Click="ExitButton_Click"/>
+                        </StackPanel>
                     </Grid>
                 </Grid>
-            </Grid>
 
-            <Grid Grid.Row="1" Margin="{StaticResource ContentMargin}">
+                <Grid Grid.Row="1" Margin="{StaticResource ContentMargin}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -653,11 +700,66 @@
                 </Grid>
             </Grid>
 
-            <TextBlock
-                x:Name="ChatCountText"
-                Grid.Row="0"
+                <TextBlock
+                    x:Name="ChatCountText"
+                    Grid.Row="0"
+                    Visibility="Collapsed"
+                    Text="受信件数: 0"/>
+            </Grid>
+
+            <Grid
+                x:Name="CollapsedUiRoot"
+                Visibility="Collapsed">
+                <Border
+                    x:Name="CollapseAnimationFrame"
+                    Background="Transparent"
+                    BorderBrush="{StaticResource CollapseStructureBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    IsHitTestVisible="False"/>
+                <Grid
+                    x:Name="TopCollapsedBar"
+                    Visibility="Collapsed">
+                    <Grid
+                        IsHitTestVisible="False"
+                        Opacity="{DynamicResource WindowDecorationOpacity}">
+                        <Border
+                            x:Name="CollapsedMenuBackgroundBorder"
+                            Background="#FF080B10"
+                            CornerRadius="6"/>
+                        <Border
+                            Background="{StaticResource TitleBarOverlayBrush}"
+                            CornerRadius="6"/>
+                        <Border
+                            BorderBrush="{StaticResource CollapseStructureBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"/>
+                    </Grid>
+                    <Button
+                        x:Name="ExpandButton"
+                        Width="32"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Stretch"
+                        Content="▼"
+                        FontSize="11"
+                        ToolTip="Overlayを展開します"
+                        Style="{StaticResource TitleBarButtonStyle}"
+                        Visibility="Collapsed"
+                        Click="CollapseButton_Click"/>
+                </Grid>
+            </Grid>
+
+            <Button
+                x:Name="EdgeCollapseButton"
+                Width="32"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Stretch"
+                Content="▶"
+                FontSize="14"
+                ToolTip="右側へ収納します"
+                Style="{StaticResource CollapsedHandleButtonStyle}"
                 Visibility="Collapsed"
-                Text="受信件数: 0"/>
+                Click="CollapseButton_Click"/>
         </Grid>
     </Border>
 </Window>

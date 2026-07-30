@@ -994,6 +994,83 @@
                                               Content="常に最前面に表示する"/>
                                     <CheckBox x:Name="ClickThroughCheckBox"
                                               Content="クリック透過を有効にする"/>
+                                    <Grid Margin="24,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="150"/>
+                                            <ColumnDefinition Width="220"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="収納位置"
+                                                   VerticalAlignment="Center"/>
+                                        <ComboBox x:Name="CollapseSideComboBox"
+                                                  Grid.Column="1">
+                                            <ComboBoxItem
+                                                Content="左側に収納"
+                                                Tag="{x:Static config:AppConfig.CollapseSideLeft}"/>
+                                            <ComboBoxItem
+                                                Content="右側に収納"
+                                                Tag="{x:Static config:AppConfig.CollapseSideRight}"/>
+                                            <ComboBoxItem
+                                                Content="上側に収納"
+                                                Tag="{x:Static config:AppConfig.CollapseSideTop}"/>
+                                            <ComboBoxItem
+                                                Content="下側に収納"
+                                                Tag="{x:Static config:AppConfig.CollapseSideBottom}"/>
+                                        </ComboBox>
+                                    </Grid>
+                                    <Grid Margin="24,12,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="150"/>
+                                            <ColumnDefinition Width="220"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="収納ハンドルの太さ"
+                                                   VerticalAlignment="Center"/>
+                                        <Grid Grid.Column="1">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="48"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Slider x:Name="EdgeHandleThicknessSlider"
+                                                    Minimum="8"
+                                                    Maximum="32"
+                                                    TickFrequency="1"
+                                                    IsSnapToTickEnabled="True"/>
+                                            <TextBlock Grid.Column="1"
+                                                       HorizontalAlignment="Right"
+                                                       VerticalAlignment="Center"
+                                                       Text="{Binding Value,
+                                                           ElementName=EdgeHandleThicknessSlider,
+                                                           StringFormat={}{0:0}px}"/>
+                                        </Grid>
+                                    </Grid>
+                                    <Grid Margin="24,12,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="150"/>
+                                            <ColumnDefinition Width="220"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="収納ハンドルの不透明度"
+                                                   VerticalAlignment="Center"/>
+                                        <Grid Grid.Column="1">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="48"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Slider x:Name="EdgeHandleOpacitySlider"
+                                                    Minimum="0"
+                                                    Maximum="1"
+                                                    TickFrequency="0.05"
+                                                    IsSnapToTickEnabled="True"/>
+                                            <TextBlock Grid.Column="1"
+                                                       HorizontalAlignment="Right"
+                                                       VerticalAlignment="Center"
+                                                       Text="{Binding Value,
+                                                           ElementName=EdgeHandleOpacitySlider,
+                                                           StringFormat={}{0:P0}}"/>
+                                        </Grid>
+                                    </Grid>
+                                    <TextBlock
+                                        Margin="174,4,0,0"
+                                        Text="左・右・下の収納ハンドルに適用します。"
+                                        Style="{StaticResource DescriptionStyle}"/>
                                 </StackPanel>
                             </Border>
 
@@ -1027,8 +1104,17 @@
                                                 Tag="{x:Static config:AppConfig.ChatColorBandPositionRight}"/>
                                         </ComboBox>
                                     </Grid>
+                                    <TextBlock Text="タイトルバーに表示するボタン"
+                                               Margin="0,10,0,2"
+                                               FontWeight="SemiBold"/>
                                     <CheckBox x:Name="ShowChatToggleButtonsCheckBox"
                                               Content="Overlayにチャット切り替えボタンを表示する"/>
+                                    <CheckBox x:Name="ShowChatFilterToggleCheckBox"
+                                              Content="Overlayにフィルターボタンを表示する"/>
+                                    <CheckBox x:Name="ShowMentionHighlightToggleCheckBox"
+                                              Content="Overlayにハイライトボタンを表示する"/>
+                                    <CheckBox x:Name="ShowCollapseButtonCheckBox"
+                                              Content="Overlayに収納ボタンを表示する"/>
                                 </StackPanel>
                             </Border>
 

@@ -333,6 +333,16 @@ public static class ConfigManager
             config.MenuBackgroundOpacity,
             defaults.MenuBackgroundOpacity,
             nameof(AppConfig.MenuBackgroundOpacity));
+        config.EdgeHandleThickness = NormalizeDouble(
+            config.EdgeHandleThickness,
+            AppConfig.MinEdgeHandleThickness,
+            AppConfig.MaxEdgeHandleThickness,
+            defaults.EdgeHandleThickness,
+            nameof(AppConfig.EdgeHandleThickness));
+        config.EdgeHandleOpacity = NormalizeOpacity(
+            config.EdgeHandleOpacity,
+            defaults.EdgeHandleOpacity,
+            nameof(AppConfig.EdgeHandleOpacity));
         config.WindowWidth = NormalizeWindowDimension(
             config.WindowWidth,
             MinWindowWidth,
@@ -385,6 +395,19 @@ public static class ConfigManager
                 nameof(AppConfig.ChatColorBandPosition),
                 "The value was not a supported position.");
             config.ChatColorBandPosition = normalizedBandPosition;
+        }
+
+        string normalizedCollapseSide =
+            AppConfig.NormalizeCollapseSide(config.CollapseSide);
+        if (!string.Equals(
+                config.CollapseSide,
+                normalizedCollapseSide,
+                StringComparison.Ordinal))
+        {
+            LogCorrection(
+                nameof(AppConfig.CollapseSide),
+                "The value was not a supported collapse side.");
+            config.CollapseSide = normalizedCollapseSide;
         }
 
         NormalizeRequiredStrings(config, defaults);
@@ -440,6 +463,26 @@ public static class ConfigManager
         LogCorrection(
             propertyName,
             $"The value was not finite or was outside the range {minimum}-{MaxWindowDimension}.");
+        return fallback;
+    }
+
+    private static double NormalizeDouble(
+        double value,
+        double minimum,
+        double maximum,
+        double fallback,
+        string propertyName)
+    {
+        if (double.IsFinite(value) &&
+            value >= minimum &&
+            value <= maximum)
+        {
+            return value;
+        }
+
+        LogCorrection(
+            propertyName,
+            $"The value was not finite or was outside the range {minimum}-{maximum}.");
         return fallback;
     }
 
@@ -515,6 +558,10 @@ public static class ConfigManager
             config.LastNotifiedVersion,
             defaults.LastNotifiedVersion,
             nameof(AppConfig.LastNotifiedVersion));
+        config.CollapseSide = NormalizeString(
+            config.CollapseSide,
+            defaults.CollapseSide,
+            nameof(AppConfig.CollapseSide));
     }
 
     private static string NormalizeString(

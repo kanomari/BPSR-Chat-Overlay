@@ -10,6 +10,14 @@ public sealed class AppConfig
     public const int MaxSenderNameColumnWidth = 240;
     public const string ChatColorBandPositionLeft = "Left";
     public const string ChatColorBandPositionRight = "Right";
+    public const string CollapseSideLeft = "Left";
+    public const string CollapseSideRight = "Right";
+    public const string CollapseSideTop = "Top";
+    public const string CollapseSideBottom = "Bottom";
+    public const double DefaultEdgeHandleThickness = 16.0;
+    public const double MinEdgeHandleThickness = 8.0;
+    public const double MaxEdgeHandleThickness = 32.0;
+    public const double DefaultEdgeHandleOpacity = 0.25;
 
     public string? CaptureDeviceName { get; set; }
 
@@ -51,6 +59,12 @@ public sealed class AppConfig
     public string ChatTextShadowColor { get; set; } = "#FF203040";
 
     public bool ShowChatToggleButtons { get; set; } = true;
+
+    public bool ShowChatFilterToggle { get; set; } = true;
+
+    public bool ShowMentionHighlightToggle { get; set; } = true;
+
+    public bool ShowCollapseButton { get; set; } = true;
 
     public bool ShowChatSeparators { get; set; } = true;
 
@@ -123,6 +137,14 @@ public sealed class AppConfig
 
     public bool TopMost { get; set; } = true;
 
+    public string CollapseSide { get; set; } = CollapseSideRight;
+
+    public double EdgeHandleThickness { get; set; } =
+        DefaultEdgeHandleThickness;
+
+    public double EdgeHandleOpacity { get; set; } =
+        DefaultEdgeHandleOpacity;
+
     public bool CheckForUpdatesOnStartup { get; set; } = true;
 
     public DateTime? LastSuccessfulUpdateCheckUtc { get; set; }
@@ -137,5 +159,34 @@ public sealed class AppConfig
             StringComparison.OrdinalIgnoreCase)
             ? ChatColorBandPositionRight
             : ChatColorBandPositionLeft;
+    }
+
+    public static string NormalizeCollapseSide(string? side)
+    {
+        if (string.Equals(
+                side,
+                CollapseSideLeft,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return CollapseSideLeft;
+        }
+
+        if (string.Equals(
+                side,
+                CollapseSideTop,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return CollapseSideTop;
+        }
+
+        if (string.Equals(
+                side,
+                CollapseSideBottom,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return CollapseSideBottom;
+        }
+
+        return CollapseSideRight;
     }
 }

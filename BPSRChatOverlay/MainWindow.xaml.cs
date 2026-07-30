@@ -26,6 +26,7 @@ public partial class MainWindow : Window
 {
     private const int MaxChatMessageCount = 500;
     private const int ClickThroughHotKeyId = 0x4250;
+    private const int CollapseHotKeyId = 0x4249;
     private const int GwlExStyle = -20;
     private const int WmNcHitTest = 0x0084;
     private const int WmHotKey = 0x0312;
@@ -38,12 +39,19 @@ public partial class MainWindow : Window
     private const int HtBottomRight = 17;
     private const uint ModShift = 0x0004;
     private const uint ModControl = 0x0002;
+    private const uint ModNoRepeat = 0x4000;
+    private const uint VkF9 = 0x78;
     private const uint VkF10 = 0x79;
     private const uint MonitorDefaultToNearest = 0x00000002;
     private const uint DefaultDpi = 96;
     private const double ResizeBorderWidthDip = 8.0;
+    private const double TopCollapsedBarHeight = 20.0;
     private const long WsExTransparent = 0x00000020L;
     private const long WsExLayered = 0x00080000L;
+    private static readonly TimeSpan UiFadeDuration =
+        TimeSpan.FromMilliseconds(50);
+    private static readonly TimeSpan CollapseAnimationDuration =
+        TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan UpdateCheckInterval =
         TimeSpan.FromHours(24);
 
@@ -60,7 +68,13 @@ public partial class MainWindow : Window
     private IntPtr _windowHandle;
     private HwndSource? _windowSource;
     private bool _clickThroughHotKeyRegistered;
+    private bool _collapseHotKeyRegistered;
     private bool _windowPlacementTrackingEnabled;
+    private CollapseState _collapseState = CollapseState.Expanded;
+    private Rect? _expandedBounds;
+    private double _expandedMinWidth;
+    private double _expandedMinHeight;
+    private string _activeCollapseSide = AppConfig.CollapseSideRight;
     private int _shutdownStarted;
 
     public ObservableCollection<ChatMessage> ChatMessages { get; } = new();
@@ -277,6 +291,18 @@ public partial class MainWindow : Window
             Debug.WriteLine("Failed to register Ctrl + Shift + F10.");
         }
 
+        _collapseHotKeyRegistered = RegisterHotKey(
+            _windowHandle,
+            CollapseHotKeyId,
+            ModControl | ModShift | ModNoRepeat,
+            VkF9);
+
+        if (!_collapseHotKeyRegistered)
+        {
+            Debug.WriteLine("Failed to register Ctrl + Shift + F9.");
+            Log.Warning("Failed to register Ctrl + Shift + F9");
+        }
+
         ApplyDisplaySettings(_appConfig);
         _windowPlacementTrackingEnabled = true;
     }
@@ -336,14 +362,29 @@ public partial class MainWindow : Window
             config.ChatTextShadowColor,
             ChatColors.DefaultChatTextShadowColor).Color;
         MenuBackgroundBorder.Background = ChatColors.MenuBackground;
+        CollapsedMenuBackgroundBorder.Background = ChatColors.MenuBackground;
+        UpdateEdgeHandleBrushes(config.EdgeHandleOpacity);
         DebugPanel.Visibility = config.ShowDebugPanel
             ? Visibility.Visible
             : Visibility.Collapsed;
         ChatTogglePanel.Visibility = config.ShowChatToggleButtons
             ? Visibility.Visible
             : Visibility.Collapsed;
+        ChatFilterToggleButton.Visibility = config.ShowChatFilterToggle
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        MentionHighlightToggleButton.Visibility =
+            config.ShowMentionHighlightToggle
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        FeatureTogglePanel.Visibility =
+            config.ShowChatFilterToggle ||
+            config.ShowMentionHighlightToggle
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         UpdateChatToggleButtonStates();
         UpdateFeatureToggleButtonStates();
+        UpdateCollapseButtonAppearance(config.CollapseSide);
         Topmost = config.TopMost;
 
         if (_windowHandle == IntPtr.Zero)
@@ -496,6 +537,515 @@ public partial class MainWindow : Window
                $"クリックして{nextState}にします";
     }
 
+    private void UpdateCollapseButtonAppearance(string? configuredSide)
+    {
+        string side = AppConfig.NormalizeCollapseSide(configuredSide);
+        bool useEdgeHandle = side != AppConfig.CollapseSideTop;
+        bool showCollapseControl = _appConfig.ShowCollapseButton;
+        double edgeHandleThickness = GetEdgeHandleThickness();
+
+        CollapseButton.Content = "▲";
+        CollapseButton.ToolTip = "上側へ収納します";
+        CollapseButton.Visibility =
+            showCollapseControl && !useEdgeHandle
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+        EdgeCollapseButton.Visibility =
+            showCollapseControl && useEdgeHandle
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        ConfigureEdgeCollapseButton(side);
+
+        NormalUiRoot.Margin =
+            showCollapseControl && useEdgeHandle
+                ? side switch
+                {
+                    AppConfig.CollapseSideLeft =>
+                        new Thickness(edgeHandleThickness, 0, 0, 0),
+                    AppConfig.CollapseSideBottom =>
+                        new Thickness(0, 0, 0, edgeHandleThickness),
+                    _ => new Thickness(0, 0, edgeHandleThickness, 0)
+                }
+                : new Thickness(0);
+    }
+
+    private void ConfigureEdgeCollapseButton(string side)
+    {
+        bool isCollapsed =
+            _collapseState is CollapseState.Collapsed or
+                CollapseState.Expanding;
+        double edgeHandleThickness = GetEdgeHandleThickness();
+
+        EdgeCollapseButton.HorizontalAlignment = side switch
+        {
+            AppConfig.CollapseSideLeft => HorizontalAlignment.Left,
+            AppConfig.CollapseSideBottom => HorizontalAlignment.Stretch,
+            _ => HorizontalAlignment.Right
+        };
+        EdgeCollapseButton.VerticalAlignment = side switch
+        {
+            AppConfig.CollapseSideBottom => VerticalAlignment.Bottom,
+            _ => VerticalAlignment.Stretch
+        };
+        EdgeCollapseButton.Width =
+            side == AppConfig.CollapseSideBottom
+                ? double.NaN
+                : edgeHandleThickness;
+        EdgeCollapseButton.Height =
+            side == AppConfig.CollapseSideBottom
+                ? edgeHandleThickness
+                : double.NaN;
+
+        EdgeCollapseButton.Content = side switch
+        {
+            AppConfig.CollapseSideLeft => isCollapsed ? "▶" : "◀",
+            AppConfig.CollapseSideBottom => isCollapsed ? "▲" : "▼",
+            _ => isCollapsed ? "◀" : "▶"
+        };
+        EdgeCollapseButton.ToolTip = isCollapsed
+            ? "Overlayを展開します"
+            : side switch
+        {
+            AppConfig.CollapseSideLeft => "左側へ収納します",
+            AppConfig.CollapseSideBottom => "下側へ収納します",
+            _ => "右側へ収納します"
+        };
+    }
+
+    private double GetEdgeHandleThickness()
+    {
+        return Math.Clamp(
+            _appConfig.EdgeHandleThickness,
+            AppConfig.MinEdgeHandleThickness,
+            AppConfig.MaxEdgeHandleThickness);
+    }
+
+    private double GetCollapsedThickness(string side)
+    {
+        return side == AppConfig.CollapseSideTop
+            ? TopCollapsedBarHeight
+            : GetEdgeHandleThickness();
+    }
+
+    private void UpdateEdgeHandleBrushes(double configuredOpacity)
+    {
+        double opacity = Math.Clamp(configuredOpacity, 0.0, 1.0);
+        double hoverOpacity = Math.Min(1.0, opacity + 0.12);
+
+        Resources["CollapsedHandleBackgroundBrush"] =
+            CreateBrush(0x18, 0x1E, 0x27, opacity);
+        Resources["CollapsedHandleBorderBrush"] =
+            CreateBrush(0x6E, 0x7B, 0x8B, opacity);
+        Resources["CollapsedHandleHoverBackgroundBrush"] =
+            CreateBrush(0x2A, 0x33, 0x3F, hoverOpacity);
+        Resources["CollapsedHandleHoverBorderBrush"] =
+            CreateBrush(0x8E, 0x9C, 0xAC, hoverOpacity);
+    }
+
+    private static SolidColorBrush CreateBrush(
+        byte red,
+        byte green,
+        byte blue,
+        double opacity)
+    {
+        byte alpha = (byte)Math.Round(
+            Math.Clamp(opacity, 0.0, 1.0) * byte.MaxValue);
+        return new SolidColorBrush(
+            Color.FromArgb(alpha, red, green, blue));
+    }
+
+    private void CollapseButton_Click(object sender, RoutedEventArgs e)
+    {
+        ToggleCollapse();
+    }
+
+    private void ToggleCollapse()
+    {
+        if (WindowState != WindowState.Normal)
+        {
+            return;
+        }
+
+        switch (_collapseState)
+        {
+            case CollapseState.Expanded:
+                _ = CollapseWindowAsync();
+                break;
+            case CollapseState.Collapsed:
+                _ = ExpandWindowAsync();
+                break;
+        }
+    }
+
+    private async Task CollapseWindowAsync()
+    {
+        Rect expandedBounds = new(
+            Left,
+            Top,
+            ActualWidth,
+            ActualHeight);
+
+        if (!IsValidWindowBounds(expandedBounds))
+        {
+            return;
+        }
+
+        SaveWindowPlacement();
+        _windowPlacementSaveTimer.Stop();
+        _expandedBounds = expandedBounds;
+        _expandedMinWidth = MinWidth;
+        _expandedMinHeight = MinHeight;
+        _activeCollapseSide =
+            AppConfig.NormalizeCollapseSide(_appConfig.CollapseSide);
+        _collapseState = CollapseState.Collapsing;
+
+        try
+        {
+            await AnimateOpacityAsync(
+                NormalUiRoot,
+                0,
+                UiFadeDuration);
+            NormalUiRoot.Visibility = Visibility.Collapsed;
+
+            ConfigureCollapsedMinimumSize(_activeCollapseSide);
+            ConfigureExpandButton(_activeCollapseSide);
+            ExpandButton.Visibility = Visibility.Collapsed;
+            TopCollapsedBar.Visibility = Visibility.Collapsed;
+            CollapseAnimationFrame.Visibility = Visibility.Visible;
+            CollapsedUiRoot.Visibility = Visibility.Visible;
+
+            double collapsedThickness =
+                GetCollapsedThickness(_activeCollapseSide);
+            Rect collapsedBounds = CalculateCollapsedBounds(
+                expandedBounds,
+                _activeCollapseSide,
+                collapsedThickness);
+            collapsedBounds = EnsureCollapsedButtonVisible(
+                collapsedBounds,
+                _activeCollapseSide);
+
+            await AnimateWindowBoundsAsync(collapsedBounds);
+
+            CollapseAnimationFrame.Visibility = Visibility.Collapsed;
+            _collapseState = CollapseState.Collapsed;
+            if (_activeCollapseSide == AppConfig.CollapseSideTop)
+            {
+                TopCollapsedBar.Visibility = Visibility.Visible;
+                ExpandButton.Visibility = _appConfig.ShowCollapseButton
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+            }
+            UpdateCollapseButtonAppearance(_activeCollapseSide);
+        }
+        catch (Exception ex) when (IsRecoverableException(ex))
+        {
+            Log.Error(ex, "Failed to collapse the overlay window");
+            RestoreExpandedStateAfterAnimationFailure();
+        }
+    }
+
+    private async Task ExpandWindowAsync()
+    {
+        if (_expandedBounds is not { } expandedBounds ||
+            !IsValidWindowBounds(expandedBounds))
+        {
+            RestoreExpandedStateAfterAnimationFailure();
+            return;
+        }
+
+        _collapseState = CollapseState.Expanding;
+
+        try
+        {
+            ExpandButton.Visibility = Visibility.Collapsed;
+            TopCollapsedBar.Visibility = Visibility.Collapsed;
+            CollapseAnimationFrame.Visibility = Visibility.Visible;
+
+            await AnimateWindowBoundsAsync(expandedBounds);
+
+            MinWidth = _expandedMinWidth;
+            MinHeight = _expandedMinHeight;
+            CollapseAnimationFrame.Visibility = Visibility.Collapsed;
+            CollapsedUiRoot.Visibility = Visibility.Collapsed;
+            NormalUiRoot.Opacity = 0;
+            NormalUiRoot.Visibility = Visibility.Visible;
+
+            await AnimateOpacityAsync(
+                NormalUiRoot,
+                1,
+                UiFadeDuration);
+
+            _collapseState = CollapseState.Expanded;
+            _expandedBounds = null;
+            UpdateCollapseButtonAppearance(_appConfig.CollapseSide);
+        }
+        catch (Exception ex) when (IsRecoverableException(ex))
+        {
+            Log.Error(ex, "Failed to expand the overlay window");
+            RestoreExpandedStateAfterAnimationFailure();
+        }
+    }
+
+    private void ConfigureCollapsedMinimumSize(string side)
+    {
+        double collapsedThickness = GetCollapsedThickness(side);
+
+        if (side is AppConfig.CollapseSideLeft or
+            AppConfig.CollapseSideRight)
+        {
+            MinWidth = collapsedThickness;
+        }
+        else
+        {
+            MinHeight = collapsedThickness;
+        }
+    }
+
+    private void ConfigureExpandButton(string side)
+    {
+        ExpandButton.Content = side switch
+        {
+            AppConfig.CollapseSideLeft => "▶",
+            AppConfig.CollapseSideTop => "▼",
+            AppConfig.CollapseSideBottom => "▲",
+            _ => "◀"
+        };
+    }
+
+    private static Rect CalculateCollapsedBounds(
+        Rect expandedBounds,
+        string side,
+        double collapsedThickness)
+    {
+        return side switch
+        {
+            AppConfig.CollapseSideLeft => new Rect(
+                expandedBounds.Left,
+                expandedBounds.Top,
+                collapsedThickness,
+                expandedBounds.Height),
+            AppConfig.CollapseSideTop => new Rect(
+                expandedBounds.Left,
+                expandedBounds.Top,
+                expandedBounds.Width,
+                collapsedThickness),
+            AppConfig.CollapseSideBottom => new Rect(
+                expandedBounds.Left,
+                expandedBounds.Bottom - collapsedThickness,
+                expandedBounds.Width,
+                collapsedThickness),
+            _ => new Rect(
+                expandedBounds.Right - collapsedThickness,
+                expandedBounds.Top,
+                collapsedThickness,
+                expandedBounds.Height)
+        };
+    }
+
+    private Rect EnsureCollapsedButtonVisible(
+        Rect collapsedBounds,
+        string side)
+    {
+        Rect workingArea = GetCurrentWorkingAreaInDips();
+        if (workingArea.IsEmpty)
+        {
+            return collapsedBounds;
+        }
+
+        double left = collapsedBounds.Left;
+        double top = collapsedBounds.Top;
+        double collapsedThickness = GetCollapsedThickness(side);
+
+        if (side is AppConfig.CollapseSideLeft or
+            AppConfig.CollapseSideRight)
+        {
+            left = Math.Clamp(
+                left,
+                workingArea.Left,
+                workingArea.Right - collapsedBounds.Width);
+            double buttonCenter = Math.Clamp(
+                collapsedBounds.Top + (collapsedBounds.Height / 2),
+                workingArea.Top + (collapsedThickness / 2),
+                workingArea.Bottom - (collapsedThickness / 2));
+            top += buttonCenter -
+                   (collapsedBounds.Top + (collapsedBounds.Height / 2));
+        }
+        else
+        {
+            top = Math.Clamp(
+                top,
+                workingArea.Top,
+                workingArea.Bottom - collapsedBounds.Height);
+            double buttonCenter = Math.Clamp(
+                collapsedBounds.Left + (collapsedBounds.Width / 2),
+                workingArea.Left + (collapsedThickness / 2),
+                workingArea.Right - (collapsedThickness / 2));
+            left += buttonCenter -
+                    (collapsedBounds.Left + (collapsedBounds.Width / 2));
+        }
+
+        return new Rect(
+            left,
+            top,
+            collapsedBounds.Width,
+            collapsedBounds.Height);
+    }
+
+    private Rect GetCurrentWorkingAreaInDips()
+    {
+        var area =
+            System.Windows.Forms.Screen.FromHandle(_windowHandle).WorkingArea;
+        GetMonitorDpi(area, out uint dpiX, out uint dpiY);
+
+        return new Rect(
+            area.Left * DefaultDpi / dpiX,
+            area.Top * DefaultDpi / dpiY,
+            area.Width * DefaultDpi / dpiX,
+            area.Height * DefaultDpi / dpiY);
+    }
+
+    private Task AnimateWindowBoundsAsync(Rect targetBounds)
+    {
+        double startWidth = ActualWidth;
+        double startHeight = ActualHeight;
+        var storyboard = new Storyboard
+        {
+            FillBehavior = FillBehavior.HoldEnd
+        };
+        var easing = new CubicEase
+        {
+            EasingMode = EasingMode.EaseInOut
+        };
+
+        AddWindowAnimation(
+            storyboard,
+            LeftProperty,
+            Left,
+            targetBounds.Left,
+            easing);
+        AddWindowAnimation(
+            storyboard,
+            TopProperty,
+            Top,
+            targetBounds.Top,
+            easing);
+        AddWindowAnimation(
+            storyboard,
+            WidthProperty,
+            startWidth,
+            targetBounds.Width,
+            easing);
+        AddWindowAnimation(
+            storyboard,
+            HeightProperty,
+            startHeight,
+            targetBounds.Height,
+            easing);
+
+        var completion = new TaskCompletionSource();
+        storyboard.Completed += (_, _) =>
+        {
+            storyboard.Remove(this);
+            Left = targetBounds.Left;
+            Top = targetBounds.Top;
+            Width = targetBounds.Width;
+            Height = targetBounds.Height;
+            completion.TrySetResult();
+        };
+        storyboard.Begin(
+            this,
+            HandoffBehavior.SnapshotAndReplace,
+            isControllable: true);
+
+        return completion.Task;
+    }
+
+    private void AddWindowAnimation(
+        Storyboard storyboard,
+        DependencyProperty property,
+        double from,
+        double to,
+        IEasingFunction easing)
+    {
+        var animation = new DoubleAnimation
+        {
+            From = from,
+            To = to,
+            Duration = CollapseAnimationDuration,
+            EasingFunction = easing
+        };
+        Storyboard.SetTarget(animation, this);
+        Storyboard.SetTargetProperty(
+            animation,
+            new PropertyPath(property));
+        storyboard.Children.Add(animation);
+    }
+
+    private static Task AnimateOpacityAsync(
+        UIElement element,
+        double targetOpacity,
+        TimeSpan duration)
+    {
+        var completion = new TaskCompletionSource();
+        var animation = new DoubleAnimation
+        {
+            From = element.Opacity,
+            To = targetOpacity,
+            Duration = duration,
+            EasingFunction = new CubicEase
+            {
+                EasingMode = EasingMode.EaseInOut
+            }
+        };
+        animation.Completed += (_, _) =>
+        {
+            element.BeginAnimation(UIElement.OpacityProperty, null);
+            element.Opacity = targetOpacity;
+            completion.TrySetResult();
+        };
+        element.BeginAnimation(
+            UIElement.OpacityProperty,
+            animation,
+            HandoffBehavior.SnapshotAndReplace);
+
+        return completion.Task;
+    }
+
+    private void RestoreExpandedStateAfterAnimationFailure()
+    {
+        BeginAnimation(LeftProperty, null);
+        BeginAnimation(TopProperty, null);
+        BeginAnimation(WidthProperty, null);
+        BeginAnimation(HeightProperty, null);
+
+        if (_expandedBounds is { } expandedBounds &&
+            IsValidWindowBounds(expandedBounds))
+        {
+            Left = expandedBounds.Left;
+            Top = expandedBounds.Top;
+            Width = expandedBounds.Width;
+            Height = expandedBounds.Height;
+        }
+
+        MinWidth = _expandedMinWidth > 0
+            ? _expandedMinWidth
+            : MinWidth;
+        MinHeight = _expandedMinHeight > 0
+            ? _expandedMinHeight
+            : MinHeight;
+        CollapsedUiRoot.Visibility = Visibility.Collapsed;
+        TopCollapsedBar.Visibility = Visibility.Collapsed;
+        CollapseAnimationFrame.Visibility = Visibility.Collapsed;
+        ExpandButton.Visibility = Visibility.Collapsed;
+        NormalUiRoot.BeginAnimation(UIElement.OpacityProperty, null);
+        NormalUiRoot.Opacity = 1;
+        NormalUiRoot.Visibility = Visibility.Visible;
+        _collapseState = CollapseState.Expanded;
+        _expandedBounds = null;
+        UpdateCollapseButtonAppearance(_appConfig.CollapseSide);
+    }
+
     private void UpdateChatToggleButtonStates()
     {
         foreach (ToggleButton toggleButton in
@@ -518,7 +1068,8 @@ public partial class MainWindow : Window
         object sender,
         MouseButtonEventArgs e)
     {
-        if (e.ChangedButton != MouseButton.Left ||
+        if (_collapseState != CollapseState.Expanded ||
+            e.ChangedButton != MouseButton.Left ||
             IsInsideButton(e.OriginalSource as DependencyObject))
         {
             return;
@@ -604,8 +1155,15 @@ public partial class MainWindow : Window
             SaveConfigSafely(_appConfig);
             handled = true;
         }
+        else if (message == WmHotKey &&
+                 wParam.ToInt32() == CollapseHotKeyId)
+        {
+            ToggleCollapse();
+            handled = true;
+        }
         else if (message == WmNcHitTest &&
-                 !_appConfig.ClickThrough)
+                 !_appConfig.ClickThrough &&
+                 _collapseState == CollapseState.Expanded)
         {
             int hitTest = GetResizeHitTest(lParam);
 
@@ -733,6 +1291,13 @@ public partial class MainWindow : Window
                height >= MinHeight;
     }
 
+    private bool IsValidWindowBounds(Rect bounds)
+    {
+        return double.IsFinite(bounds.Left) &&
+               double.IsFinite(bounds.Top) &&
+               IsValidWindowSize(bounds.Width, bounds.Height);
+    }
+
     private static bool IsWindowAreaVisible(
         double left,
         double top,
@@ -825,7 +1390,8 @@ public partial class MainWindow : Window
     private void ScheduleWindowPlacementSave()
     {
         if (!_windowPlacementTrackingEnabled ||
-            WindowState == WindowState.Minimized)
+            WindowState == WindowState.Minimized ||
+            _collapseState != CollapseState.Expanded)
         {
             return;
         }
@@ -844,7 +1410,8 @@ public partial class MainWindow : Window
 
     private void SaveWindowPlacement()
     {
-        if (WindowState == WindowState.Minimized)
+        if (WindowState == WindowState.Minimized ||
+            _collapseState != CollapseState.Expanded)
         {
             return;
         }
@@ -853,9 +1420,12 @@ public partial class MainWindow : Window
             ? new Rect(Left, Top, ActualWidth, ActualHeight)
             : RestoreBounds;
 
-        if (!IsValidWindowSize(bounds.Width, bounds.Height) ||
-            !double.IsFinite(bounds.Left) ||
-            !double.IsFinite(bounds.Top))
+        SaveWindowPlacement(bounds);
+    }
+
+    private void SaveWindowPlacement(Rect bounds)
+    {
+        if (!IsValidWindowBounds(bounds))
         {
             return;
         }
@@ -866,6 +1436,20 @@ public partial class MainWindow : Window
         _appConfig.WindowHeight = bounds.Height;
 
         SaveConfigSafely(_appConfig);
+    }
+
+    private void SaveWindowPlacementForShutdown()
+    {
+        if (_collapseState == CollapseState.Expanded)
+        {
+            SaveWindowPlacement();
+            return;
+        }
+
+        if (_expandedBounds is { } expandedBounds)
+        {
+            SaveWindowPlacement(expandedBounds);
+        }
     }
 
     private void OnChatReceived(ChatMessage message)
@@ -1241,7 +1825,7 @@ public partial class MainWindow : Window
         _windowPlacementTrackingEnabled = false;
 
         RunShutdownAction(
-            SaveWindowPlacement,
+            SaveWindowPlacementForShutdown,
             "Failed to save window placement during shutdown");
 
         RunShutdownAction(
@@ -1260,6 +1844,23 @@ public partial class MainWindow : Window
                 _clickThroughHotKeyRegistered = false;
             },
             "Failed to unregister click-through hot key");
+
+        RunShutdownAction(
+            () =>
+            {
+                if (!_collapseHotKeyRegistered)
+                {
+                    return;
+                }
+
+                if (!UnregisterHotKey(_windowHandle, CollapseHotKeyId))
+                {
+                    Log.Warning("Failed to unregister collapse hot key");
+                }
+
+                _collapseHotKeyRegistered = false;
+            },
+            "Failed to unregister collapse hot key");
 
         RunShutdownAction(
             () => _windowSource?.RemoveHook(WindowMessageHook),
@@ -1416,6 +2017,14 @@ public partial class MainWindow : Window
         public int Top;
         public int Right;
         public int Bottom;
+    }
+
+    private enum CollapseState
+    {
+        Expanded,
+        Collapsing,
+        Collapsed,
+        Expanding
     }
 
     private enum MonitorDpiType

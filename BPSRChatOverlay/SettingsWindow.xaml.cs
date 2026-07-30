@@ -109,6 +109,12 @@ public partial class SettingsWindow : Window
             currentConfig.EnableBoldMessageText;
         ShowChatToggleButtonsCheckBox.IsChecked =
             currentConfig.ShowChatToggleButtons;
+        ShowChatFilterToggleCheckBox.IsChecked =
+            currentConfig.ShowChatFilterToggle;
+        ShowMentionHighlightToggleCheckBox.IsChecked =
+            currentConfig.ShowMentionHighlightToggle;
+        ShowCollapseButtonCheckBox.IsChecked =
+            currentConfig.ShowCollapseButton;
         ShowChatSeparatorsCheckBox.IsChecked =
             currentConfig.ShowChatSeparators;
         ShowChatZebraStripesCheckBox.IsChecked =
@@ -121,6 +127,18 @@ public partial class SettingsWindow : Window
             AppConfig.ChatColorBandPositionRight
                 ? 1
                 : 0;
+        CollapseSideComboBox.SelectedIndex =
+            AppConfig.NormalizeCollapseSide(currentConfig.CollapseSide) switch
+            {
+                AppConfig.CollapseSideLeft => 0,
+                AppConfig.CollapseSideTop => 2,
+                AppConfig.CollapseSideBottom => 3,
+                _ => 1
+            };
+        EdgeHandleThicknessSlider.Value =
+            currentConfig.EdgeHandleThickness;
+        EdgeHandleOpacitySlider.Value =
+            currentConfig.EdgeHandleOpacity;
         ShowWorldChatCheckBox.IsChecked = currentConfig.ShowWorldChat;
         ShowChannelChatCheckBox.IsChecked = currentConfig.ShowChannelChat;
         ShowPartyChatCheckBox.IsChecked = currentConfig.ShowPartyChat;
@@ -392,6 +410,12 @@ public partial class SettingsWindow : Window
             ChatTextShadowColor = _chatTextShadowColor,
             ShowChatToggleButtons =
                 ShowChatToggleButtonsCheckBox.IsChecked == true,
+            ShowChatFilterToggle =
+                ShowChatFilterToggleCheckBox.IsChecked == true,
+            ShowMentionHighlightToggle =
+                ShowMentionHighlightToggleCheckBox.IsChecked == true,
+            ShowCollapseButton =
+                ShowCollapseButtonCheckBox.IsChecked == true,
             ShowChatSeparators =
                 ShowChatSeparatorsCheckBox.IsChecked == true,
             ShowChatZebraStripes =
@@ -441,6 +465,12 @@ public partial class SettingsWindow : Window
                 TalkSoundFilePathTextBox.Text.Trim(),
             ShowDebugPanel = ShowDebugPanelCheckBox.IsChecked == true,
             TopMost = TopMostCheckBox.IsChecked == true,
+            CollapseSide =
+                (CollapseSideComboBox.SelectedItem as ComboBoxItem)
+                    ?.Tag as string
+                ?? AppConfig.CollapseSideRight,
+            EdgeHandleThickness = EdgeHandleThicknessSlider.Value,
+            EdgeHandleOpacity = EdgeHandleOpacitySlider.Value,
             CheckForUpdatesOnStartup =
                 CheckForUpdatesOnStartupCheckBox.IsChecked == true,
             LastSuccessfulUpdateCheckUtc =
