@@ -11,6 +11,7 @@ using BPSRChatOverlay.Models;
 using BPSRChatOverlay.Settings;
 using BPSRChatOverlay.UIResources;
 using BPSRChatOverlay.Updates;
+using BPSR_ZDPSLib;
 using Serilog;
 using SharpPcap;
 using SharpPcap.LibPcap;
@@ -41,7 +42,9 @@ public partial class SettingsWindow : Window
 
     public AppConfig? SavedConfig { get; private set; }
 
-    public SettingsWindow(AppConfig currentConfig)
+    public SettingsWindow(
+        AppConfig currentConfig,
+        string? activeCaptureDeviceName = null)
     {
         InitializeComponent();
 
@@ -52,7 +55,9 @@ public partial class SettingsWindow : Window
         CheckForUpdatesOnStartupCheckBox.IsChecked =
             currentConfig.CheckForUpdatesOnStartup;
         CaptureDeviceComboBox.ItemsSource = _captureDeviceOptions;
-        LoadCaptureDevices(currentConfig.CaptureDeviceName, true);
+        LoadCaptureDevices(
+            activeCaptureDeviceName ?? currentConfig.CaptureDeviceName,
+            true);
         _worldChatTextColor = NormalizeColorText(
             currentConfig.WorldChatTextColor,
             ChatColors.DefaultWorldChatTextColor);
@@ -583,11 +588,14 @@ public partial class SettingsWindow : Window
     {
         try
         {
-            List<CaptureDeviceOption> loadedOptions =
-                CaptureDeviceList.Instance
-                    .Select(CreateCaptureDeviceOption)
-                    .Where(option => !string.IsNullOrWhiteSpace(option.Name))
-                    .ToList();
+            List<ICaptureDevice> devices = CaptureDeviceList.Instance
+                .Cast<ICaptureDevice>()
+                .Where(device =>
+                    !string.IsNullOrWhiteSpace(device.Name))
+                .ToList();
+            List<CaptureDeviceOption> loadedOptions = devices
+                .Select(CreateCaptureDeviceOption)
+                .ToList();
 
             EnsureUniqueDisplayNames(loadedOptions);
 
@@ -603,25 +611,24 @@ public partial class SettingsWindow : Window
                 return;
             }
 
-            CaptureDeviceOption? selectedOption =
-                FindCaptureDevice(preferredDeviceName);
-
-            if (selectedOption is null &&
-                !string.Equals(
-                    preferredDeviceName,
-                    _currentConfig.CaptureDeviceName,
-                    StringComparison.Ordinal))
-            {
-                selectedOption =
-                    FindCaptureDevice(_currentConfig.CaptureDeviceName);
-            }
-
+            string? configuredDeviceName =
+                ResolveConfiguredDeviceName(
+                    devices,
+                    preferredDeviceName);
+            CaptureDeviceSelectionResult selection =
+                CaptureDeviceSelector.Select(
+                    devices,
+                    configuredDeviceName,
+                    _currentConfig.ExeNames);
             CaptureDeviceComboBox.SelectedItem =
-                selectedOption ?? _captureDeviceOptions[0];
+                FindCaptureDevice(selection.Device.Name)
+                ?? _captureDeviceOptions[0];
 
             bool savedDeviceMissing =
                 !string.IsNullOrWhiteSpace(_currentConfig.CaptureDeviceName) &&
-                FindCaptureDevice(_currentConfig.CaptureDeviceName) is null;
+                !CaptureDeviceSelector.HasSavedDevice(
+                    devices,
+                    _currentConfig.CaptureDeviceName);
 
             if (savedDeviceMissing)
             {
@@ -645,6 +652,24 @@ public partial class SettingsWindow : Window
             ShowCaptureDeviceStatus(
                 "ネットワークカード一覧を取得できませんでした。Npcapが導入されているか確認してください。");
         }
+    }
+
+    private string? ResolveConfiguredDeviceName(
+        IReadOnlyList<ICaptureDevice> devices,
+        string? preferredDeviceName)
+    {
+        if (CaptureDeviceSelector.HasSavedDevice(
+                devices,
+                preferredDeviceName) ||
+            string.Equals(
+                preferredDeviceName,
+                _currentConfig.CaptureDeviceName,
+                StringComparison.Ordinal))
+        {
+            return preferredDeviceName;
+        }
+
+        return _currentConfig.CaptureDeviceName;
     }
 
     private static CaptureDeviceOption CreateCaptureDeviceOption(

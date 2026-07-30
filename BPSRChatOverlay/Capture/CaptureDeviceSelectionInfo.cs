@@ -4,10 +4,10 @@ public enum CaptureDeviceSelectionReason
 {
     SavedNameMatch,
     SavedDescriptionMatch,
-    ConfigurationEmptyEthernet,
-    ConfigurationEmptyFirstDevice,
-    ConfiguredDeviceMissingEthernet,
-    ConfiguredDeviceMissingFirstDevice
+    GameConnectionLocalAddress,
+    WindowsBestRoute,
+    ActiveGatewayInterface,
+    FirstEnumeratedDevice
 }
 
 public sealed record CaptureDeviceSelectionInfo(
@@ -19,7 +19,9 @@ public sealed record CaptureDeviceSelectionInfo(
     bool WasFallback,
     bool ConfiguredDeviceMissing,
     bool WasConfigurationEmpty,
-    string? ConfiguredDeviceName)
+    string? ConfiguredDeviceName,
+    string? GameConnectionLocalAddress,
+    int? WindowsBestRouteInterfaceIndex)
 {
     public string SelectionReasonText => SelectionReason switch
     {
@@ -27,14 +29,14 @@ public sealed record CaptureDeviceSelectionInfo(
             "保存されたNameに一致",
         CaptureDeviceSelectionReason.SavedDescriptionMatch =>
             "保存されたDescriptionに一致",
-        CaptureDeviceSelectionReason.ConfigurationEmptyEthernet =>
-            "ネットワークカード未指定のためEthernetを自動選択",
-        CaptureDeviceSelectionReason.ConfigurationEmptyFirstDevice =>
-            "ネットワークカード未指定のため先頭デバイスを自動選択",
-        CaptureDeviceSelectionReason.ConfiguredDeviceMissingEthernet =>
-            "保存済みNICが見つからないためEthernetへフォールバック",
-        CaptureDeviceSelectionReason.ConfiguredDeviceMissingFirstDevice =>
-            "保存済みNICが見つからないため先頭デバイスへフォールバック",
+        CaptureDeviceSelectionReason.GameConnectionLocalAddress =>
+            "ゲーム接続のローカルIPに一致",
+        CaptureDeviceSelectionReason.WindowsBestRoute =>
+            "Windowsの最適経路に一致",
+        CaptureDeviceSelectionReason.ActiveGatewayInterface =>
+            "通信可能なアクティブNICに一致",
+        CaptureDeviceSelectionReason.FirstEnumeratedDevice =>
+            "Npcap列挙の先頭デバイスへフォールバック",
         _ => SelectionReason.ToString()
     };
 }

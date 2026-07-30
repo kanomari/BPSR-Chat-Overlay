@@ -403,7 +403,9 @@ public partial class MainWindow : Window
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
-        var settingsWindow = new SettingsWindow(_appConfig)
+        var settingsWindow = new SettingsWindow(
+            _appConfig,
+            _netCap.CaptureDeviceSelection?.ActualDeviceName)
         {
             Owner = this
         };

@@ -1117,80 +1117,26 @@ public class NetCap : IDisposable
             throw exception;
         }
 
-        string? configuredDeviceName = Config.CaptureDeviceName;
-        bool wasConfigurationEmpty =
-            string.IsNullOrWhiteSpace(configuredDeviceName);
-
         try
         {
-            foreach (var device in devices)
-            {
-                if (!wasConfigurationEmpty &&
-                    device.Name == configuredDeviceName)
-                {
-                    return SelectCaptureDevice(
-                        device,
-                        CaptureDeviceSelectionReason.SavedNameMatch,
-                        configuredDeviceName,
-                        false,
-                        false,
-                        wasConfigurationEmpty);
-                }
-
-                if (!wasConfigurationEmpty &&
-                    device.Description == configuredDeviceName)
-                {
-                    return SelectCaptureDevice(
-                        device,
-                        CaptureDeviceSelectionReason.SavedDescriptionMatch,
-                        configuredDeviceName,
-                        false,
-                        false,
-                        wasConfigurationEmpty);
-                }
-            }
-
-            var ethernet = devices.FirstOrDefault(device =>
-                GetFriendlyName(device) == "Ethernet");
-            if (ethernet != null)
-            {
-                return SelectCaptureDevice(
-                    ethernet,
-                    wasConfigurationEmpty
-                        ? CaptureDeviceSelectionReason.ConfigurationEmptyEthernet
-                        : CaptureDeviceSelectionReason.ConfiguredDeviceMissingEthernet,
-                    configuredDeviceName,
-                    !wasConfigurationEmpty,
-                    !wasConfigurationEmpty,
-                    wasConfigurationEmpty);
-            }
+            CaptureDeviceSelectionResult selection =
+                CaptureDeviceSelector.Select(
+                    devices.Cast<ICaptureDevice>().ToList(),
+                    Config.CaptureDeviceName,
+                    Config.ExeNames);
+            return SelectCaptureDevice(selection);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error selecting capture device");
             throw;
         }
-
-        var firstDevice = devices[0];
-        return SelectCaptureDevice(
-            firstDevice,
-            wasConfigurationEmpty
-                ? CaptureDeviceSelectionReason.ConfigurationEmptyFirstDevice
-                : CaptureDeviceSelectionReason.ConfiguredDeviceMissingFirstDevice,
-            configuredDeviceName,
-            !wasConfigurationEmpty,
-            !wasConfigurationEmpty,
-            wasConfigurationEmpty);
     }
 
     private ICaptureDevice SelectCaptureDevice(
-        ICaptureDevice device,
-        CaptureDeviceSelectionReason selectionReason,
-        string? configuredDeviceName,
-        bool wasFallback,
-        bool configuredDeviceMissing,
-        bool wasConfigurationEmpty)
+        CaptureDeviceSelectionResult selection)
     {
+        ICaptureDevice device = selection.Device;
         string actualDeviceName = device.Name ?? string.Empty;
         string? friendlyName = NormalizeDeviceText(GetFriendlyName(device));
         string? description = NormalizeDeviceText(device.Description);
@@ -1204,14 +1150,16 @@ public class NetCap : IDisposable
             friendlyName,
             description,
             displayName,
-            selectionReason,
-            wasFallback,
-            configuredDeviceMissing,
-            wasConfigurationEmpty,
-            configuredDeviceName);
+            selection.SelectionReason,
+            selection.WasFallback,
+            selection.ConfiguredDeviceMissing,
+            selection.WasConfigurationEmpty,
+            selection.ConfiguredDeviceName,
+            selection.GameConnectionLocalAddress?.ToString(),
+            selection.WindowsBestRouteInterfaceIndex);
 
         Log.Information(
-            "Capture device selected. SelectionReason: {SelectionReason}, ConfiguredDeviceName: {ConfiguredDeviceName}, ActualDeviceName: {ActualDeviceName}, FriendlyName: {FriendlyName}, Description: {Description}, DisplayName: {DisplayName}, WasFallback: {WasFallback}, ConfiguredDeviceMissing: {ConfiguredDeviceMissing}, WasConfigurationEmpty: {WasConfigurationEmpty}",
+            "Capture device selected. SelectionReason: {SelectionReason}, ConfiguredDeviceName: {ConfiguredDeviceName}, ActualDeviceName: {ActualDeviceName}, FriendlyName: {FriendlyName}, Description: {Description}, DisplayName: {DisplayName}, WasFallback: {WasFallback}, ConfiguredDeviceMissing: {ConfiguredDeviceMissing}, WasConfigurationEmpty: {WasConfigurationEmpty}, GameConnectionLocalAddress: {GameConnectionLocalAddress}, WindowsBestRouteInterfaceIndex: {WindowsBestRouteInterfaceIndex}",
             CaptureDeviceSelection.SelectionReason,
             CaptureDeviceSelection.ConfiguredDeviceName,
             CaptureDeviceSelection.ActualDeviceName,
@@ -1220,13 +1168,15 @@ public class NetCap : IDisposable
             CaptureDeviceSelection.DisplayName,
             CaptureDeviceSelection.WasFallback,
             CaptureDeviceSelection.ConfiguredDeviceMissing,
-            CaptureDeviceSelection.WasConfigurationEmpty);
+            CaptureDeviceSelection.WasConfigurationEmpty,
+            CaptureDeviceSelection.GameConnectionLocalAddress,
+            CaptureDeviceSelection.WindowsBestRouteInterfaceIndex);
 
-        if (configuredDeviceMissing)
+        if (selection.ConfiguredDeviceMissing)
         {
             Log.Warning(
                 "Configured capture device was not found. ConfiguredDeviceName: {ConfiguredDeviceName}, FallbackReason: {FallbackReason}, ActualDeviceName: {ActualDeviceName}, FriendlyName: {FriendlyName}, Description: {Description}",
-                configuredDeviceName,
+                selection.ConfiguredDeviceName,
                 CaptureDeviceSelection.SelectionReason,
                 actualDeviceName,
                 friendlyName,
