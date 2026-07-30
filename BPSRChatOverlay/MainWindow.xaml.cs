@@ -343,6 +343,7 @@ public partial class MainWindow : Window
             ? Visibility.Visible
             : Visibility.Collapsed;
         UpdateChatToggleButtonStates();
+        UpdateFeatureToggleButtonStates();
         Topmost = config.TopMost;
 
         if (_windowHandle == IntPtr.Zero)
@@ -425,6 +426,74 @@ public partial class MainWindow : Window
 
         RebuildDisplayedChatMessages();
         SaveConfigSafely(_appConfig);
+    }
+
+    private void FeatureToggleButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (sender is not ToggleButton
+            {
+                Tag: string featureType
+            } toggleButton)
+        {
+            return;
+        }
+
+        bool isEnabled = toggleButton.IsChecked == true;
+
+        switch (featureType)
+        {
+            case "ChatFilter":
+                SetChatFilterEnabled(isEnabled);
+                break;
+            case "MentionHighlight":
+                SetMentionHighlightEnabled(isEnabled);
+                break;
+        }
+    }
+
+    private void SetChatFilterEnabled(bool enabled)
+    {
+        _appConfig.EnableChatFilter = enabled;
+        UpdateFeatureToggleButtonStates();
+        RebuildDisplayedChatMessages();
+        SaveConfigSafely(_appConfig);
+    }
+
+    private void SetMentionHighlightEnabled(bool enabled)
+    {
+        _appConfig.EnableMentionNotification = enabled;
+        UpdateFeatureToggleButtonStates();
+        ReevaluateMentionStatus();
+        RebuildDisplayedChatMessages();
+        SaveConfigSafely(_appConfig);
+    }
+
+    private void UpdateFeatureToggleButtonStates()
+    {
+        ChatFilterToggleButton.IsChecked =
+            _appConfig.EnableChatFilter;
+        ChatFilterToggleButton.ToolTip = CreateFeatureToggleToolTip(
+            "キーワードフィルター",
+            _appConfig.EnableChatFilter);
+
+        MentionHighlightToggleButton.IsChecked =
+            _appConfig.EnableMentionNotification;
+        MentionHighlightToggleButton.ToolTip = CreateFeatureToggleToolTip(
+            "キーワードハイライト",
+            _appConfig.EnableMentionNotification);
+    }
+
+    private static string CreateFeatureToggleToolTip(
+        string featureName,
+        bool enabled)
+    {
+        string currentState = enabled ? "ON" : "OFF";
+        string nextState = enabled ? "OFF" : "ON";
+
+        return $"{featureName}：{currentState}\n" +
+               $"クリックして{nextState}にします";
     }
 
     private void UpdateChatToggleButtonStates()
@@ -1052,7 +1121,8 @@ public partial class MainWindow : Window
 
     private bool MatchesKeywordFilter(ChatMessage message)
     {
-        if (_chatFilterKeywords.Length == 0)
+        if (!_appConfig.EnableChatFilter ||
+            _chatFilterKeywords.Length == 0)
         {
             return true;
         }

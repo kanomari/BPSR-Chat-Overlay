@@ -127,6 +127,8 @@ public partial class SettingsWindow : Window
         ShowGuildChatCheckBox.IsChecked = currentConfig.ShowGuildChat;
         ShowNewbieChatCheckBox.IsChecked = currentConfig.ShowNewbieChat;
         ShowTalkChatCheckBox.IsChecked = currentConfig.ShowTalkChat;
+        EnableChatFilterCheckBox.IsChecked =
+            currentConfig.EnableChatFilter;
         ChatFilterKeywordsTextBox.Text = currentConfig.ChatFilterKeywords;
         EnableMentionNotificationCheckBox.IsChecked =
             currentConfig.EnableMentionNotification;
@@ -410,6 +412,8 @@ public partial class SettingsWindow : Window
             ShowGuildChat = ShowGuildChatCheckBox.IsChecked == true,
             ShowNewbieChat = ShowNewbieChatCheckBox.IsChecked == true,
             ShowTalkChat = ShowTalkChatCheckBox.IsChecked == true,
+            EnableChatFilter =
+                EnableChatFilterCheckBox.IsChecked == true,
             ChatFilterKeywords = ChatFilterKeywordsTextBox.Text.Trim(),
             WorldChatTextColor = _worldChatTextColor,
             ChannelChatTextColor = _channelChatTextColor,

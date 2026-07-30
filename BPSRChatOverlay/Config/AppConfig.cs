@@ -81,6 +81,8 @@ public sealed class AppConfig
 
     public bool ShowTalkChat { get; set; } = true;
 
+    public bool EnableChatFilter { get; set; } = true;
+
     public string ChatFilterKeywords { get; set; } = string.Empty;
 
     public string WorldChatTextColor { get; set; } = "#FFBA55D3";

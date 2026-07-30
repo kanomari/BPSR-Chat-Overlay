@@ -98,7 +98,17 @@
         <system:Double x:Key="ChatToggleButtonHeight">16</system:Double>
         <Thickness x:Key="ChatToggleButtonMargin">1.5,0</Thickness>
         <Thickness x:Key="ChatToggleGroupMargin">0,0,12,0</Thickness>
+        <Thickness x:Key="FeatureToggleGroupMargin">0,0,6,0</Thickness>
         <system:Double x:Key="TimestampFontSize">11.5</system:Double>
+        <Geometry x:Key="FilterIconGeometry">
+            M 1,2 L 15,2 L 10,8 L 10,14 L 6,12 L 6,8 Z
+        </Geometry>
+        <Geometry x:Key="HighlightIconGeometry">
+            M 8,0 L 9.5,5.5 L 15,7 L 9.5,8.5 L 8,14
+            L 6.5,8.5 L 1,7 L 6.5,5.5 Z
+            M 14,0 L 14.6,1.9 L 16,2.5 L 14.6,3.1
+            L 14,5 L 13.4,3.1 L 12,2.5 L 13.4,1.9 Z
+        </Geometry>
 
         <Style x:Key="TransparentTrackButtonStyle" TargetType="RepeatButton">
             <Setter Property="Focusable" Value="False"/>
@@ -383,6 +393,7 @@
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
                         <Border
@@ -427,8 +438,41 @@
                                           Click="ChatToggleButton_Click"/>
                         </StackPanel>
 
-                        <Button
+                        <StackPanel
+                            x:Name="FeatureTogglePanel"
                             Grid.Column="2"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            Margin="{StaticResource FeatureToggleGroupMargin}">
+                            <ToggleButton
+                                x:Name="ChatFilterToggleButton"
+                                Tag="ChatFilter"
+                                Style="{StaticResource ChatToggleButtonStyle}"
+                                Click="FeatureToggleButton_Click">
+                                <Viewbox Width="11" Height="11">
+                                    <Path
+                                        Data="{StaticResource FilterIconGeometry}"
+                                        Fill="{Binding Foreground,
+                                            RelativeSource={RelativeSource AncestorType={x:Type ToggleButton}}}"/>
+                                </Viewbox>
+                            </ToggleButton>
+                            <ToggleButton
+                                x:Name="MentionHighlightToggleButton"
+                                Tag="MentionHighlight"
+                                Style="{StaticResource ChatToggleButtonStyle}"
+                                Click="FeatureToggleButton_Click">
+                                <Viewbox Width="11" Height="11">
+                                    <Path
+                                        Data="{StaticResource HighlightIconGeometry}"
+                                        Fill="{Binding Foreground,
+                                            RelativeSource={RelativeSource AncestorType={x:Type ToggleButton}}}"/>
+                                </Viewbox>
+                            </ToggleButton>
+                        </StackPanel>
+
+                        <Button
+                            Grid.Column="3"
                             Content="&#xE713;"
                             FontFamily="Segoe MDL2 Assets"
                             FontSize="11"
@@ -436,7 +480,7 @@
                             Click="SettingsButton_Click"/>
 
                         <Button
-                            Grid.Column="3"
+                            Grid.Column="4"
                             Content="×"
                             FontSize="14"
                             Style="{StaticResource CloseButtonStyle}"

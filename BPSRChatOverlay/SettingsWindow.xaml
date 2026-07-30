@@ -1310,6 +1310,9 @@
                                     <TextBlock Text="キーワードフィルター" FontWeight="SemiBold"/>
                                     <TextBlock Text="入力したキーワードを含むチャットのみ表示します。"
                                                Style="{StaticResource DescriptionStyle}"/>
+                                    <CheckBox x:Name="EnableChatFilterCheckBox"
+                                              Content="キーワードフィルターを有効にする"
+                                              Margin="0,10,0,0"/>
                                     <TextBox x:Name="ChatFilterKeywordsTextBox"
                                              Height="72"
                                              Margin="0,10,0,0"
