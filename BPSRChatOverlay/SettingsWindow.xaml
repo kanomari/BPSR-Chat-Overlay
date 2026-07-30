@@ -558,10 +558,12 @@
         </Style>
 
         <Style x:Key="CategoryItemStyle" TargetType="ListBoxItem">
-            <Setter Property="Foreground" Value="{DynamicResource SettingsMutedTextBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource SettingsTextBrush}"/>
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Padding" Value="18,11"/>
-            <Setter Property="Margin" Value="8,2"/>
+            <Setter Property="Padding" Value="16,11"/>
+            <Setter Property="Margin" Value="8,5,8,1"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
@@ -587,6 +589,47 @@
                                         Property="Background"
                                         Value="{DynamicResource SettingsSelectedBrush}"/>
                                 <Setter TargetName="CategoryBorder"
+                                        Property="BorderBrush"
+                                        Value="{DynamicResource SettingsAccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SubcategoryItemStyle"
+               TargetType="ListBoxItem"
+               BasedOn="{StaticResource CategoryItemStyle}">
+            <Setter Property="Foreground" Value="{DynamicResource SettingsMutedTextBrush}"/>
+            <Setter Property="Padding" Value="44,5,10,5"/>
+            <Setter Property="Margin" Value="8,0"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="SubcategoryBorder"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="4"
+                                BorderThickness="3,0,0,0"
+                                BorderBrush="Transparent"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="SubcategoryBorder"
+                                        Property="Background"
+                                        Value="{DynamicResource SettingsHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Foreground"
+                                        Value="{DynamicResource SettingsTextBrush}"/>
+                                <Setter TargetName="SubcategoryBorder"
+                                        Property="Background"
+                                        Value="{DynamicResource SettingsSelectedBrush}"/>
+                                <Setter TargetName="SubcategoryBorder"
                                         Property="BorderBrush"
                                         Value="{DynamicResource SettingsAccentBrush}"/>
                             </Trigger>
@@ -704,7 +747,7 @@
 
             <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="164"/>
+                    <ColumnDefinition Width="196"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
@@ -712,30 +755,80 @@
                         Background="{DynamicResource SettingsSidebarBrush}"
                         BorderBrush="{DynamicResource SettingsBorderBrush}"
                         BorderThickness="0,0,1,0">
-                    <ListBox x:Name="CategoryListBox"
-                             Background="Transparent"
-                             BorderThickness="0"
-                             ItemContainerStyle="{StaticResource CategoryItemStyle}"
-                             SelectionChanged="CategoryListBox_SelectionChanged">
-                        <ListBoxItem Content="表示" Tag="Display"/>
-                        <ListBoxItem Content="表示チャット" Tag="Chat"/>
-                        <ListBoxItem Content="色" Tag="Color"/>
-                        <ListBoxItem Content="トーク" Tag="Talk"/>
-                        <ListBoxItem Content="ネットワーク" Tag="Network"/>
-                        <ListBoxItem Content="フィルター" Tag="Advanced"/>
-                        <ListBoxItem Content="About" Tag="About"/>
-                    </ListBox>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <ListBox x:Name="CategoryListBox"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 ItemContainerStyle="{StaticResource CategoryItemStyle}"
+                                 PreviewMouseLeftButtonDown="CategoryListBox_PreviewMouseLeftButtonDown"
+                                 SelectionChanged="CategoryListBox_SelectionChanged">
+                            <ListBoxItem Content="外観" Tag="Appearance"/>
+                            <ListBoxItem Content="フォント"
+                                         Tag="Appearance:Font"
+                                         Style="{StaticResource SubcategoryItemStyle}"/>
+                            <ListBoxItem Content="レイアウト"
+                                         Tag="Appearance:Layout"
+                                         Style="{StaticResource SubcategoryItemStyle}"/>
+                            <ListBoxItem Content="メニューバー"
+                                         Tag="Appearance:MenuBar"
+                                         Style="{StaticResource SubcategoryItemStyle}"/>
+                            <ListBoxItem Content="収納"
+                                         Tag="Appearance:Collapse"
+                                         Style="{StaticResource SubcategoryItemStyle}"/>
+                            <ListBoxItem Content="色"
+                                         Tag="Appearance:Color"
+                                         Style="{StaticResource SubcategoryItemStyle}"/>
+
+                            <ListBoxItem Content="チャット表示" Tag="ChatDisplay"/>
+                            <ListBoxItem Content="表示チャンネル"
+                                         Tag="ChatDisplay:Channels"
+                                         Style="{StaticResource SubcategoryItemStyle}"/>
+                            <ListBoxItem Content="キーワードフィルター"
+                                         Tag="ChatDisplay:Filter"
+                                         Style="{StaticResource SubcategoryItemStyle}"/>
+                            <ListBoxItem Content="ハイライト"
+                                         Tag="ChatDisplay:Highlight"
+                                         Style="{StaticResource SubcategoryItemStyle}"/>
+                            <ListBoxItem Content="トーク"
+                                         Tag="ChatDisplay:Talk"
+                                         Style="{StaticResource SubcategoryItemStyle}"/>
+
+                            <ListBoxItem Content="システム" Tag="System"/>
+                            <ListBoxItem Content="ネットワーク"
+                                         Tag="System:Network"
+                                         Style="{StaticResource SubcategoryItemStyle}"/>
+                            <ListBoxItem Content="起動"
+                                         Tag="System:Startup"
+                                         Style="{StaticResource SubcategoryItemStyle}"/>
+                            <ListBoxItem Content="デバッグ"
+                                         Tag="System:Debug"
+                                         Style="{StaticResource SubcategoryItemStyle}"/>
+
+                            <ListBoxItem Content="About" Tag="About"/>
+                        </ListBox>
+                    </ScrollViewer>
                 </Border>
 
-                <Grid Grid.Column="1" Margin="24,20,18,18">
-                    <ScrollViewer x:Name="DisplaySettingsPanel"
-                                  VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled">
+                <ScrollViewer x:Name="SettingsPageScrollViewer"
+                              Grid.Column="1"
+                              Margin="24,20,18,18"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel x:Name="SettingsPagesRoot" Margin="0,0,8,0">
+                    <TextBlock x:Name="SettingsPageTitleTextBlock"
+                               Style="{StaticResource SectionTitleStyle}"/>
+
+                    <Grid x:Name="DisplaySettingsPanel"
+                          Margin="0,0,0,14">
                         <StackPanel Margin="0,0,8,0">
-                            <TextBlock Text="表示" Style="{StaticResource SectionTitleStyle}"/>
-                            <Border Style="{StaticResource CardStyle}">
+                            <TextBlock Text="表示"
+                                       Visibility="Collapsed"
+                                       Style="{StaticResource SectionTitleStyle}"/>
+                            <Border x:Name="AppearanceFontSection"
+                                    Style="{StaticResource CardStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="レイアウト"
+                                    <TextBlock Text="フォント"
                                                Style="{StaticResource GroupTitleStyle}"/>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -743,8 +836,6 @@
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
                                         <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
                                             <RowDefinition Height="Auto"/>
                                             <RowDefinition Height="Auto"/>
                                             <RowDefinition Height="Auto"/>
@@ -792,13 +883,12 @@
                                         <CheckBox x:Name="EnableBoldMessageTextCheckBox"
                                                   Grid.Row="2"
                                                   Grid.ColumnSpan="2"
-                                                  Margin="0,14,0,0"
+                                                  Margin="0,14,0,6"
                                                   Content="本文を太字で表示する"/>
 
                                         <CheckBox x:Name="EnableChatTextShadowCheckBox"
                                                   Grid.Row="3"
                                                   Grid.ColumnSpan="2"
-                                                  Margin="0,8,0,0"
                                                   Content="テキストに影を付ける"/>
 
                                         <TextBlock Grid.Row="4"
@@ -827,64 +917,15 @@
                                                     Click="ColorButton_Click"/>
                                         </Grid>
 
-                                        <TextBlock Grid.Row="5"
-                                                   Text="時刻列の幅"
-                                                   Margin="0,16,0,0"/>
-                                        <Grid Grid.Row="5"
-                                              Grid.Column="1"
-                                              Margin="0,12,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="56"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Slider x:Name="TimeColumnWidthSlider"
-                                                    Minimum="36"
-                                                    Maximum="80"
-                                                    TickFrequency="1"
-                                                    IsSnapToTickEnabled="True"
-                                                    Value="{Binding Text, ElementName=TimeColumnWidthTextBox,
-                                                                    Mode=TwoWay,
-                                                                    UpdateSourceTrigger=PropertyChanged}"/>
-                                            <TextBox x:Name="TimeColumnWidthTextBox"
-                                                     Visibility="Collapsed"/>
-                                            <TextBlock Grid.Column="1"
-                                                       HorizontalAlignment="Right"
-                                                       Text="{Binding Value, ElementName=TimeColumnWidthSlider,
-                                                                      StringFormat={}{0:0}px}"/>
-                                        </Grid>
-
-                                        <TextBlock Grid.Row="6"
-                                                   Text="名前列の幅"
-                                                   Margin="0,16,0,0"/>
-                                        <Grid Grid.Row="6"
-                                              Grid.Column="1"
-                                              Margin="0,12,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="56"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Slider x:Name="SenderNameColumnWidthSlider"
-                                                    Minimum="60"
-                                                    Maximum="240"
-                                                    TickFrequency="1"
-                                                    IsSnapToTickEnabled="True"
-                                                    Value="{Binding Text, ElementName=SenderNameColumnWidthTextBox,
-                                                                    Mode=TwoWay,
-                                                                    UpdateSourceTrigger=PropertyChanged}"/>
-                                            <TextBox x:Name="SenderNameColumnWidthTextBox"
-                                                     Visibility="Collapsed"/>
-                                            <TextBlock Grid.Column="1"
-                                                       HorizontalAlignment="Right"
-                                                       Text="{Binding Value, ElementName=SenderNameColumnWidthSlider,
-                                                                      StringFormat={}{0:0}px}"/>
-                                        </Grid>
                                     </Grid>
                                 </StackPanel>
                             </Border>
 
-                            <Border Style="{StaticResource CardStyle}" Margin="0,14,0,0">
+                            <Border x:Name="AppearanceLayoutSection"
+                                    Style="{StaticResource CardStyle}"
+                                    Margin="0,14,0,0">
                                 <StackPanel>
-                                    <TextBlock Text="透明度"
+                                    <TextBlock Text="レイアウト"
                                                Style="{StaticResource GroupTitleStyle}"/>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -983,17 +1024,130 @@
                                                        Style="{StaticResource DescriptionStyle}"/>
                                         </StackPanel>
                                     </Grid>
+
+                                    <Grid Margin="0,16,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="210"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="時刻欄の幅"/>
+                                        <Grid Grid.Column="1">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="56"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Slider x:Name="TimeColumnWidthSlider"
+                                                    Minimum="36"
+                                                    Maximum="80"
+                                                    TickFrequency="1"
+                                                    IsSnapToTickEnabled="True"
+                                                    Value="{Binding Text, ElementName=TimeColumnWidthTextBox,
+                                                                    Mode=TwoWay,
+                                                                    UpdateSourceTrigger=PropertyChanged}"/>
+                                            <TextBox x:Name="TimeColumnWidthTextBox"
+                                                     Visibility="Collapsed"/>
+                                            <TextBlock Grid.Column="1"
+                                                       HorizontalAlignment="Right"
+                                                       Text="{Binding Value, ElementName=TimeColumnWidthSlider,
+                                                                      StringFormat={}{0:0}px}"/>
+                                        </Grid>
+                                    </Grid>
+
+                                    <Grid Margin="0,16,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="210"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="名前欄の幅"/>
+                                        <Grid Grid.Column="1">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="56"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Slider x:Name="SenderNameColumnWidthSlider"
+                                                    Minimum="60"
+                                                    Maximum="240"
+                                                    TickFrequency="1"
+                                                    IsSnapToTickEnabled="True"
+                                                    Value="{Binding Text, ElementName=SenderNameColumnWidthTextBox,
+                                                                    Mode=TwoWay,
+                                                                    UpdateSourceTrigger=PropertyChanged}"/>
+                                            <TextBox x:Name="SenderNameColumnWidthTextBox"
+                                                     Visibility="Collapsed"/>
+                                            <TextBlock Grid.Column="1"
+                                                       HorizontalAlignment="Right"
+                                                       Text="{Binding Value, ElementName=SenderNameColumnWidthSlider,
+                                                                      StringFormat={}{0:0}px}"/>
+                                        </Grid>
+                                    </Grid>
+
+                                    <CheckBox x:Name="HighlightNewChatRowsCheckBox"
+                                              Margin="0,16,0,6"
+                                              Content="新着チャットの背景を一時的に強調する"/>
+                                    <CheckBox x:Name="ShowChatSeparatorsCheckBox"
+                                              Content="チャット間に区切り線を表示する"/>
+                                    <CheckBox x:Name="ShowChatZebraStripesCheckBox"
+                                              Content="チャットの背景を交互に表示する"/>
+                                    <CheckBox x:Name="ShowChatColorBandCheckBox"
+                                              Content="チャネル色帯を表示する"/>
+                                    <Grid Margin="24,4,0,0"
+                                          IsEnabled="{Binding IsChecked,
+                                                              ElementName=ShowChatColorBandCheckBox}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="150"/>
+                                            <ColumnDefinition Width="160"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="チャネル色帯位置"/>
+                                        <ComboBox x:Name="ChatColorBandPositionComboBox"
+                                                  Grid.Column="1">
+                                            <ComboBoxItem
+                                                Content="左"
+                                                Tag="{x:Static config:AppConfig.ChatColorBandPositionLeft}"/>
+                                            <ComboBoxItem
+                                                Content="右"
+                                                Tag="{x:Static config:AppConfig.ChatColorBandPositionRight}"/>
+                                        </ComboBox>
+                                    </Grid>
                                 </StackPanel>
                             </Border>
 
-                            <Border Style="{StaticResource CardStyle}" Margin="0,14,0,0">
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid x:Name="AppearanceActionsPanel"
+                          Margin="0,0,0,14"
+                          Visibility="Collapsed">
+                        <StackPanel Margin="0,0,8,0">
+                            <Border x:Name="AppearanceMenuBarSection"
+                                    Style="{StaticResource CardStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="ウィンドウ"
+                                    <TextBlock Text="メニューバー"
                                                Style="{StaticResource GroupTitleStyle}"/>
-                                    <CheckBox x:Name="TopMostCheckBox"
-                                              Content="常に最前面に表示する"/>
-                                    <CheckBox x:Name="ClickThroughCheckBox"
-                                              Content="クリック透過を有効にする"/>
+                                    <TextBlock Text="タイトルバーに表示するボタンを選択します。"
+                                               Style="{StaticResource DescriptionStyle}"/>
+                                    <CheckBox x:Name="ShowChatToggleButtonsCheckBox"
+                                              Margin="0,10,0,6"
+                                              Content="Overlayにチャット切り替えボタンを表示する"/>
+                                    <CheckBox x:Name="ShowChatFilterToggleCheckBox"
+                                              Content="Overlayにフィルターボタンを表示する"/>
+                                    <CheckBox x:Name="ShowMentionHighlightToggleCheckBox"
+                                              Content="Overlayにハイライトボタンを表示する"/>
+                                    <CheckBox x:Name="ShowCollapseButtonCheckBox"
+                                              Content="Overlayに収納ボタンを表示する"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border x:Name="AppearanceCollapseSection"
+                                    Style="{StaticResource CardStyle}"
+                                    Margin="0,14,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="収納"
+                                               Style="{StaticResource GroupTitleStyle}"/>
+                                    <CheckBox
+                                        Content="Overlayに収納ボタンを表示する"
+                                        IsChecked="{Binding IsChecked,
+                                            ElementName=ShowCollapseButtonCheckBox,
+                                            Mode=TwoWay}"/>
                                     <Grid Margin="24,8,0,0">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="150"/>
@@ -1022,7 +1176,7 @@
                                             <ColumnDefinition Width="150"/>
                                             <ColumnDefinition Width="220"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="収納ハンドルの太さ"
+                                        <TextBlock Text="収納ハンドルの幅"
                                                    VerticalAlignment="Center"/>
                                         <Grid Grid.Column="1">
                                             <Grid.ColumnDefinitions>
@@ -1047,7 +1201,7 @@
                                             <ColumnDefinition Width="150"/>
                                             <ColumnDefinition Width="220"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="収納ハンドルの不透明度"
+                                        <TextBlock Text="収納ハンドルの透明度"
                                                    VerticalAlignment="Center"/>
                                         <Grid Grid.Column="1">
                                             <Grid.ColumnDefinitions>
@@ -1073,108 +1227,71 @@
                                         Style="{StaticResource DescriptionStyle}"/>
                                 </StackPanel>
                             </Border>
-
-                            <Border Style="{StaticResource CardStyle}" Margin="0,14,0,0">
-                                <StackPanel>
-                                    <TextBlock Text="チャット表示"
-                                               Style="{StaticResource GroupTitleStyle}"/>
-                                    <CheckBox x:Name="HighlightNewChatRowsCheckBox"
-                                              Content="新着チャットの背景を一時的に強調する"/>
-                                    <CheckBox x:Name="ShowChatSeparatorsCheckBox"
-                                              Content="チャット間に区切り線を表示する"/>
-                                    <CheckBox x:Name="ShowChatZebraStripesCheckBox"
-                                              Content="チャットの背景を交互に表示する"/>
-                                    <CheckBox x:Name="ShowChatColorBandCheckBox"
-                                              Content="色帯を表示する"/>
-                                    <Grid Margin="24,4,0,6"
-                                          IsEnabled="{Binding IsChecked,
-                                                              ElementName=ShowChatColorBandCheckBox}">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="150"/>
-                                            <ColumnDefinition Width="160"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="色帯位置"/>
-                                        <ComboBox x:Name="ChatColorBandPositionComboBox"
-                                                  Grid.Column="1">
-                                            <ComboBoxItem
-                                                Content="左"
-                                                Tag="{x:Static config:AppConfig.ChatColorBandPositionLeft}"/>
-                                            <ComboBoxItem
-                                                Content="右"
-                                                Tag="{x:Static config:AppConfig.ChatColorBandPositionRight}"/>
-                                        </ComboBox>
-                                    </Grid>
-                                    <TextBlock Text="タイトルバーに表示するボタン"
-                                               Margin="0,10,0,2"
-                                               FontWeight="SemiBold"/>
-                                    <CheckBox x:Name="ShowChatToggleButtonsCheckBox"
-                                              Content="Overlayにチャット切り替えボタンを表示する"/>
-                                    <CheckBox x:Name="ShowChatFilterToggleCheckBox"
-                                              Content="Overlayにフィルターボタンを表示する"/>
-                                    <CheckBox x:Name="ShowMentionHighlightToggleCheckBox"
-                                              Content="Overlayにハイライトボタンを表示する"/>
-                                    <CheckBox x:Name="ShowCollapseButtonCheckBox"
-                                              Content="Overlayに収納ボタンを表示する"/>
-                                </StackPanel>
-                            </Border>
-
-                            <Border Style="{StaticResource CardStyle}" Margin="0,14,0,0">
-                                <StackPanel>
-                                    <TextBlock Text="デバッグ"
-                                               Style="{StaticResource GroupTitleStyle}"/>
-                                    <CheckBox x:Name="ShowDebugPanelCheckBox"
-                                              Content="通信確認パネルを表示する"/>
-                                </StackPanel>
-                            </Border>
                         </StackPanel>
-                    </ScrollViewer>
+                    </Grid>
 
-                    <ScrollViewer x:Name="ChatSettingsPanel"
-                                  Visibility="Collapsed"
-                                  VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled">
+                    <Grid x:Name="ChatSettingsPanel"
+                          Margin="0,0,0,14"
+                          Visibility="Collapsed">
                         <StackPanel Margin="0,0,8,0">
-                            <TextBlock Text="表示チャット" Style="{StaticResource SectionTitleStyle}"/>
+                            <TextBlock Text="表示チャット"
+                                       Visibility="Collapsed"
+                                       Style="{StaticResource SectionTitleStyle}"/>
                             <TextBlock Text="オーバーレイへ表示するチャット種別を選択します。"
                                        Style="{StaticResource DescriptionStyle}"
                                        Margin="0,0,0,14"/>
-                            <Border Style="{StaticResource CardStyle}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
-                                    <CheckBox x:Name="ShowWorldChatCheckBox" Content="ワールド"/>
-                                    <CheckBox x:Name="ShowChannelChatCheckBox"
-                                              Grid.Column="1" Content="チャンネル"/>
-                                    <CheckBox x:Name="ShowGuildChatCheckBox"
-                                              Grid.Row="1" Content="ギルド"/>
-                                    <CheckBox x:Name="ShowNewbieChatCheckBox"
-                                              Grid.Row="1" Grid.Column="1"
-                                              Content="初心者チャット"/>
-                                    <CheckBox x:Name="ShowPartyChatCheckBox"
-                                              Grid.Row="2" Content="パーティ"/>
-                                    <CheckBox x:Name="ShowTalkChatCheckBox"
-                                              Grid.Row="2" Grid.Column="1"
-                                              Content="✉ トーク"/>
-                                </Grid>
+                            <Border x:Name="ChatChannelsSection"
+                                    Style="{StaticResource CardStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="表示チャンネル"
+                                               Style="{StaticResource GroupTitleStyle}"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <CheckBox x:Name="ShowWorldChatCheckBox"
+                                                  Content="ワールド"/>
+                                        <CheckBox x:Name="ShowChannelChatCheckBox"
+                                                  Grid.Column="1"
+                                                  Content="チャンネル"/>
+                                        <CheckBox x:Name="ShowPartyChatCheckBox"
+                                                  Grid.Row="1"
+                                                  Content="パーティ"/>
+                                        <CheckBox x:Name="ShowGuildChatCheckBox"
+                                                  Grid.Row="1"
+                                                  Grid.Column="1"
+                                                  Content="ギルド"/>
+                                        <CheckBox x:Name="ShowNewbieChatCheckBox"
+                                                  Grid.Row="2"
+                                                  Content="初心者"/>
+                                        <CheckBox x:Name="ShowTalkChatCheckBox"
+                                                  Grid.Row="2"
+                                                  Grid.Column="1"
+                                                  Content="✉ トーク"/>
+                                    </Grid>
+                                </StackPanel>
                             </Border>
                         </StackPanel>
-                    </ScrollViewer>
+                    </Grid>
 
-                    <ScrollViewer x:Name="ColorSettingsPanel"
-                                  Visibility="Collapsed"
-                                  VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Margin="0,0,8,0">
-                            <TextBlock Text="色" Style="{StaticResource SectionTitleStyle}"/>
+                    <Grid x:Name="ColorSettingsPanel"
+                          Margin="0,0,0,14"
+                          Visibility="Collapsed">
+                        <StackPanel x:Name="AppearanceColorSection"
+                                    Margin="0,0,8,0">
+                            <TextBlock Text="色"
+                                       Visibility="Collapsed"
+                                       Style="{StaticResource SectionTitleStyle}"/>
                             <Border Style="{StaticResource CardStyle}">
                                 <StackPanel>
+                                    <TextBlock Text="色"
+                                               Style="{StaticResource GroupTitleStyle}"/>
                                     <TextBlock Text="チャット文字色"
                                                FontWeight="SemiBold"
                                                Margin="0,0,0,8"/>
@@ -1245,7 +1362,9 @@
 
                             <Border Style="{StaticResource CardStyle}" Margin="0,14,0,0">
                                 <StackPanel>
-                                    <TextBlock Text="背景色" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                    <TextBlock Text="強調色・背景色"
+                                               FontWeight="SemiBold"
+                                               Margin="0,0,0,8"/>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -1255,96 +1374,68 @@
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="44"/>
                                             <RowDefinition Height="44"/>
+                                            <RowDefinition Height="44"/>
+                                            <RowDefinition Height="44"/>
                                         </Grid.RowDefinitions>
-                                        <TextBlock Text="チャット背景"/>
-                                        <Border x:Name="ChatBackgroundColorPreview" Grid.Column="1"
+                                        <TextBlock Text="ハイライト色"/>
+                                        <Border x:Name="AppearanceMentionHighlightColorPreview"
+                                                Grid.Column="1"
                                                 Width="34" Height="22"
                                                 BorderBrush="{DynamicResource SettingsBorderBrush}"
                                                 BorderThickness="1" CornerRadius="3"/>
-                                        <Button Grid.Column="2" Content="変更" Tag="ChatBackgroundColor" Margin="0,4"
+                                        <Button Grid.Column="2" Content="変更"
+                                                Tag="MentionHighlightColor" Margin="0,4"
                                                 Click="ColorButton_Click"/>
-                                        <TextBlock Grid.Row="1" Text="メニュー背景"/>
-                                        <Border x:Name="MenuBackgroundColorPreview" Grid.Row="1" Grid.Column="1"
+
+                                        <TextBlock Grid.Row="1" Text="トーク強調色"/>
+                                        <Border x:Name="AppearanceTalkHighlightBackgroundColorPreview"
+                                                Grid.Row="1" Grid.Column="1"
                                                 Width="34" Height="22"
                                                 BorderBrush="{DynamicResource SettingsBorderBrush}"
                                                 BorderThickness="1" CornerRadius="3"/>
                                         <Button Grid.Row="1" Grid.Column="2" Content="変更" Margin="0,4"
+                                                Tag="TalkHighlightBackgroundColor"
+                                                Click="ColorButton_Click"/>
+
+                                        <TextBlock Grid.Row="2" Text="チャット背景色"/>
+                                        <Border x:Name="ChatBackgroundColorPreview"
+                                                Grid.Row="2" Grid.Column="1"
+                                                Width="34" Height="22"
+                                                BorderBrush="{DynamicResource SettingsBorderBrush}"
+                                                BorderThickness="1" CornerRadius="3"/>
+                                        <Button Grid.Row="2" Grid.Column="2" Content="変更" Margin="0,4"
+                                                Tag="ChatBackgroundColor"
+                                                Click="ColorButton_Click"/>
+
+                                        <TextBlock Grid.Row="3" Text="メニュー背景色"/>
+                                        <Border x:Name="MenuBackgroundColorPreview"
+                                                Grid.Row="3" Grid.Column="1"
+                                                Width="34" Height="22"
+                                                BorderBrush="{DynamicResource SettingsBorderBrush}"
+                                                BorderThickness="1" CornerRadius="3"/>
+                                        <Button Grid.Row="3" Grid.Column="2" Content="変更" Margin="0,4"
                                                 Tag="MenuBackgroundColor" Click="ColorButton_Click"/>
                                     </Grid>
                                 </StackPanel>
                             </Border>
 
                         </StackPanel>
-                    </ScrollViewer>
+                    </Grid>
 
-                    <ScrollViewer x:Name="TalkSettingsPanel"
-                                  Visibility="Collapsed"
-                                  VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled">
+                    <Grid x:Name="NetworkSettingsPanel"
+                          Margin="0,0,0,14"
+                          Visibility="Collapsed">
                         <StackPanel Margin="0,0,8,0">
-                            <TextBlock Text="トーク" Style="{StaticResource SectionTitleStyle}"/>
-                            <Border Style="{StaticResource CardStyle}">
+                            <TextBlock Text="ネットワーク"
+                                       Visibility="Collapsed"
+                                       Style="{StaticResource SectionTitleStyle}"/>
+                            <Border x:Name="SystemNetworkSection"
+                                    Style="{StaticResource CardStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="トーク設定" FontWeight="SemiBold"/>
-                                    <CheckBox x:Name="EnableTalkHighlightCheckBox"
-                                              Content="トークをハイライトする"
-                                              Margin="0,10,0,2"/>
-
-                                    <Grid Margin="0,12,0,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="54"/>
-                                            <ColumnDefinition Width="86"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="トークハイライト背景色"/>
-                                        <Border x:Name="TalkHighlightBackgroundColorPreview"
-                                                Grid.Column="1"
-                                                Width="34" Height="22"
-                                                BorderBrush="{DynamicResource SettingsBorderBrush}"
-                                                BorderThickness="1" CornerRadius="3"/>
-                                        <Button Grid.Column="2"
-                                                Content="変更"
-                                                Tag="TalkHighlightBackgroundColor"
-                                                Click="ColorButton_Click"/>
-                                    </Grid>
-
-                                    <CheckBox x:Name="EnableTalkSoundCheckBox"
-                                               Content="トーク通知音を鳴らす"
-                                              Margin="0,26,0,0"/>
-                                    <TextBlock Text="通知音ファイル" Margin="0,14,0,7"/>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBox x:Name="TalkSoundFilePathTextBox"
-                                                 IsReadOnly="True"/>
-                                        <Button Grid.Column="1" Content="参照"
-                                                Margin="8,0,0,0"
-                                                Click="BrowseTalkSoundButton_Click"/>
-                                        <Button Grid.Column="2" Content="クリア"
-                                                Margin="6,0,0,0"
-                                                Click="ClearTalkSoundButton_Click"/>
-                                    </Grid>
-                                    <Button Content="テスト再生"
-                                            HorizontalAlignment="Left"
-                                            Margin="0,10,0,0"
-                                            Click="TestTalkSoundButton_Click"/>
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
-                    </ScrollViewer>
-
-                    <ScrollViewer x:Name="NetworkSettingsPanel"
-                                  Visibility="Collapsed"
-                                  VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Margin="0,0,8,0">
-                            <TextBlock Text="ネットワーク" Style="{StaticResource SectionTitleStyle}"/>
-                            <Border Style="{StaticResource CardStyle}">
-                                <StackPanel>
-                                    <TextBlock Text="ネットワークカード" FontWeight="SemiBold"/>
+                                    <TextBlock Text="ネットワーク"
+                                               Style="{StaticResource GroupTitleStyle}"/>
+                                    <TextBlock Text="ネットワークカード"
+                                               FontWeight="SemiBold"/>
                                     <Grid Margin="0,12,0,0">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -1382,26 +1473,65 @@
                                     </Border>
                                 </StackPanel>
                             </Border>
-                        </StackPanel>
-                    </ScrollViewer>
-
-                    <ScrollViewer x:Name="AdvancedSettingsPanel"
-                                  Visibility="Collapsed"
-                                  VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Margin="0,0,8,0">
-                            <TextBlock Text="フィルター" Style="{StaticResource SectionTitleStyle}"/>
-                            <Border Style="{StaticResource CardStyle}">
+                            <Border x:Name="SystemStartupSection"
+                                    Style="{StaticResource CardStyle}"
+                                    Margin="0,14,0,0">
                                 <StackPanel>
-                                    <TextBlock Text="キーワードフィルター" FontWeight="SemiBold"/>
+                                    <TextBlock Text="起動"
+                                               Style="{StaticResource GroupTitleStyle}"/>
+                                    <CheckBox x:Name="TopMostCheckBox"
+                                              Content="常に最前面に表示する"/>
+                                    <CheckBox x:Name="ClickThroughCheckBox"
+                                              Content="クリック透過を有効にする"/>
+                                    <CheckBox x:Name="CheckForUpdatesOnStartupCheckBox"
+                                              Content="起動時に更新を確認する"/>
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="SystemDebugSection"
+                                    Style="{StaticResource CardStyle}"
+                                    Margin="0,14,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="デバッグ"
+                                               Style="{StaticResource GroupTitleStyle}"/>
+                                    <CheckBox x:Name="ShowDebugPanelCheckBox"
+                                              Content="通信確認パネルを表示する"/>
+                                    <Button Content="設定・ログフォルダーを開く"
+                                            HorizontalAlignment="Left"
+                                            Margin="0,12,0,0"
+                                            Click="OpenDataFolderButton_Click"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid x:Name="AdvancedSettingsPanel"
+                          Margin="0,0,0,14"
+                          Visibility="Collapsed">
+                        <StackPanel Margin="0,0,8,0">
+                            <TextBlock Text="フィルター"
+                                       Visibility="Collapsed"
+                                       Style="{StaticResource SectionTitleStyle}"/>
+                            <Border x:Name="ChatFilterSection"
+                                    Style="{StaticResource CardStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="キーワードフィルター"
+                                               Style="{StaticResource GroupTitleStyle}"/>
                                     <TextBlock Text="入力したキーワードを含むチャットのみ表示します。"
                                                Style="{StaticResource DescriptionStyle}"/>
                                     <CheckBox x:Name="EnableChatFilterCheckBox"
                                               Content="キーワードフィルターを有効にする"
-                                              Margin="0,10,0,0"/>
+                                              Margin="0,10,0,6"/>
+                                    <CheckBox
+                                        Content="Overlayにフィルターボタンを表示する"
+                                        IsChecked="{Binding IsChecked,
+                                            ElementName=ShowChatFilterToggleCheckBox,
+                                            Mode=TwoWay}"/>
+                                    <TextBlock Text="キーワード設定"
+                                               Margin="0,14,0,0"
+                                               FontWeight="SemiBold"/>
                                     <TextBox x:Name="ChatFilterKeywordsTextBox"
                                              Height="72"
-                                             Margin="0,10,0,0"
+                                             Margin="0,8,0,0"
                                              AcceptsReturn="True"
                                              TextWrapping="Wrap"
                                              VerticalContentAlignment="Top"
@@ -1411,15 +1541,23 @@
                                 </StackPanel>
                             </Border>
 
-                            <Border Style="{StaticResource CardStyle}" Margin="0,14,0,0">
+                            <Border x:Name="ChatHighlightSection"
+                                    Style="{StaticResource CardStyle}"
+                                    Margin="0,14,0,0">
                                 <StackPanel>
-                                    <TextBlock Text="ハイライト設定" FontWeight="SemiBold"/>
+                                    <TextBlock Text="ハイライト"
+                                               Style="{StaticResource GroupTitleStyle}"/>
+                                    <TextBlock
+                                        Text="指定したキーワードを含むチャットを背景色で強調して表示します。"
+                                        Style="{StaticResource DescriptionStyle}"/>
                                     <CheckBox x:Name="EnableMentionNotificationCheckBox"
                                               Content="キーワードをハイライト表示する"
-                                              Margin="0,10,0,2"/>
-                                    <CheckBox x:Name="EnableMentionSoundCheckBox"
-                                              Content="通知音を鳴らす"
-                                              IsEnabled="{Binding IsChecked, ElementName=EnableMentionNotificationCheckBox}"/>
+                                              Margin="0,10,0,6"/>
+                                    <CheckBox
+                                        Content="Overlayにハイライトボタンを表示する"
+                                        IsChecked="{Binding IsChecked,
+                                            ElementName=ShowMentionHighlightToggleCheckBox,
+                                            Mode=TwoWay}"/>
                                     <Grid Margin="0,14,0,0">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="160"/>
@@ -1438,8 +1576,6 @@
 
                                     <TextBlock Text="ハイライトするキーワード"
                                                Margin="0,16,0,0"/>
-                                    <TextBlock Text="指定したキーワードを含むチャットを背景色で強調表示します。スペースまたは改行で複数指定できます。"
-                                               Style="{StaticResource DescriptionStyle}"/>
                                     <TextBox x:Name="MentionKeywordsTextBox"
                                              Height="60"
                                              Margin="0,8,0,0"
@@ -1447,7 +1583,13 @@
                                              TextWrapping="Wrap"
                                              VerticalContentAlignment="Top"
                                              VerticalScrollBarVisibility="Auto"/>
+                                    <TextBlock Text="スペースまたは改行で複数指定できます。"
+                                               Style="{StaticResource DescriptionStyle}"/>
 
+                                    <CheckBox x:Name="EnableMentionSoundCheckBox"
+                                              Content="通知音を鳴らす"
+                                              Margin="0,24,0,6"
+                                              IsEnabled="{Binding IsChecked, ElementName=EnableMentionNotificationCheckBox}"/>
                                     <TextBlock Text="通知音ファイル" Margin="0,14,0,7"/>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -1472,14 +1614,75 @@
                             </Border>
 
                         </StackPanel>
-                    </ScrollViewer>
+                    </Grid>
 
-                    <ScrollViewer x:Name="AboutSettingsPanel"
-                                  Visibility="Collapsed"
-                                  VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled">
+                    <Grid x:Name="TalkSettingsPanel"
+                          Margin="0,0,0,14"
+                          Visibility="Collapsed">
+                        <StackPanel Margin="0,0,8,0">
+                            <TextBlock Text="トーク"
+                                       Visibility="Collapsed"
+                                       Style="{StaticResource SectionTitleStyle}"/>
+                            <Border x:Name="ChatTalkSection"
+                                    Style="{StaticResource CardStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="トーク"
+                                               Style="{StaticResource GroupTitleStyle}"/>
+                                    <CheckBox x:Name="EnableTalkHighlightCheckBox"
+                                              Content="トークをハイライトする"
+                                              Margin="0,10,0,6"/>
+
+                                    <Grid Margin="0,12,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="54"/>
+                                            <ColumnDefinition Width="86"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="トークハイライト背景色"/>
+                                        <Border x:Name="TalkHighlightBackgroundColorPreview"
+                                                Grid.Column="1"
+                                                Width="34" Height="22"
+                                                BorderBrush="{DynamicResource SettingsBorderBrush}"
+                                                BorderThickness="1" CornerRadius="3"/>
+                                        <Button Grid.Column="2"
+                                                Content="変更"
+                                                Tag="TalkHighlightBackgroundColor"
+                                                Click="ColorButton_Click"/>
+                                    </Grid>
+
+                                    <CheckBox x:Name="EnableTalkSoundCheckBox"
+                                              Content="トーク通知音を鳴らす"
+                                              Margin="0,30,0,6"/>
+                                    <TextBlock Text="通知音ファイル" Margin="0,14,0,7"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="TalkSoundFilePathTextBox"
+                                                 IsReadOnly="True"/>
+                                        <Button Grid.Column="1" Content="参照"
+                                                Margin="8,0,0,0"
+                                                Click="BrowseTalkSoundButton_Click"/>
+                                        <Button Grid.Column="2" Content="クリア"
+                                                Margin="6,0,0,0"
+                                                Click="ClearTalkSoundButton_Click"/>
+                                    </Grid>
+                                    <Button Content="テスト再生"
+                                            HorizontalAlignment="Left"
+                                            Margin="0,10,0,0"
+                                            Click="TestTalkSoundButton_Click"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid x:Name="AboutSettingsPanel"
+                          Visibility="Collapsed">
                         <StackPanel Margin="0,0,8,0">
                             <TextBlock Text="About"
+                                       Visibility="Collapsed"
                                        Style="{StaticResource SectionTitleStyle}"/>
                             <Border Style="{StaticResource CardStyle}">
                                 <StackPanel>
@@ -1509,10 +1712,6 @@
                                             HorizontalAlignment="Left"
                                             Margin="0,12,0,0"
                                             Click="CheckForUpdatesButton_Click"/>
-                                    <CheckBox x:Name="CheckForUpdatesOnStartupCheckBox"
-                                              Content="起動時に更新を確認する"
-                                              Margin="0,10,0,0"/>
-
                                     <TextBlock Text="Copyright © 2026 hojumari"
                                                Margin="0,20,0,0"/>
 
@@ -1535,11 +1734,6 @@
                                         </Hyperlink>
                                     </TextBlock>
 
-                                    <Button Content="設定・ログフォルダーを開く"
-                                            HorizontalAlignment="Left"
-                                            Margin="0,18,0,0"
-                                            Click="OpenDataFolderButton_Click"/>
-
                                     <TextBlock Text="Acknowledgements"
                                                Margin="0,20,0,8"
                                                FontWeight="SemiBold"/>
@@ -1557,8 +1751,9 @@
                                 </StackPanel>
                             </Border>
                         </StackPanel>
-                    </ScrollViewer>
-                </Grid>
+                    </Grid>
+                    </StackPanel>
+                </ScrollViewer>
             </Grid>
 
             <Border Grid.Row="2"

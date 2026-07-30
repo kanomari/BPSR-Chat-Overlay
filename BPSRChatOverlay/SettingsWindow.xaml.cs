@@ -8,6 +8,7 @@ using System.Windows.Media;
 using System.Windows.Navigation;
 using BPSRChatOverlay.Config;
 using BPSRChatOverlay.Models;
+using BPSRChatOverlay.Settings;
 using BPSRChatOverlay.UIResources;
 using BPSRChatOverlay.Updates;
 using Serilog;
@@ -22,6 +23,7 @@ public partial class SettingsWindow : Window
         "https://github.com/kanomari/BPSR-Chat-Overlay";
 
     private readonly AppConfig _currentConfig;
+    private readonly SettingsNavigationController _settingsNavigation;
     private readonly NotificationSoundPlayer _notificationTestSoundPlayer = new();
     private readonly List<CaptureDeviceOption> _captureDeviceOptions = [];
     private CancellationTokenSource? _updateCheckCancellation;
@@ -44,6 +46,7 @@ public partial class SettingsWindow : Window
         InitializeComponent();
 
         _currentConfig = currentConfig;
+        _settingsNavigation = CreateSettingsNavigation();
         CurrentVersionTextBlock.Text =
             AppVersionProvider.CurrentVersionText;
         CheckForUpdatesOnStartupCheckBox.IsChecked =
@@ -172,34 +175,93 @@ public partial class SettingsWindow : Window
         object sender,
         SelectionChangedEventArgs e)
     {
-        if (DisplaySettingsPanel is null ||
-            ChatSettingsPanel is null ||
-            ColorSettingsPanel is null ||
-            TalkSettingsPanel is null ||
-            NetworkSettingsPanel is null ||
-            AdvancedSettingsPanel is null ||
-            AboutSettingsPanel is null)
+        string? navigationKey =
+            (CategoryListBox.SelectedItem as ListBoxItem)?.Tag as string;
+        if (string.IsNullOrWhiteSpace(navigationKey))
         {
             return;
         }
 
-        string? category =
-            (CategoryListBox.SelectedItem as ListBoxItem)?.Tag as string;
+        _settingsNavigation.Navigate(navigationKey);
+    }
 
-        DisplaySettingsPanel.Visibility =
-            category == "Display" ? Visibility.Visible : Visibility.Collapsed;
-        ChatSettingsPanel.Visibility =
-            category == "Chat" ? Visibility.Visible : Visibility.Collapsed;
-        ColorSettingsPanel.Visibility =
-            category == "Color" ? Visibility.Visible : Visibility.Collapsed;
-        TalkSettingsPanel.Visibility =
-            category == "Talk" ? Visibility.Visible : Visibility.Collapsed;
-        NetworkSettingsPanel.Visibility =
-            category == "Network" ? Visibility.Visible : Visibility.Collapsed;
-        AdvancedSettingsPanel.Visibility =
-            category == "Advanced" ? Visibility.Visible : Visibility.Collapsed;
-        AboutSettingsPanel.Visibility =
-            category == "About" ? Visibility.Visible : Visibility.Collapsed;
+    private void CategoryListBox_PreviewMouseLeftButtonDown(
+        object sender,
+        MouseButtonEventArgs e)
+    {
+        var item = ItemsControl.ContainerFromElement(
+            CategoryListBox,
+            e.OriginalSource as DependencyObject) as ListBoxItem;
+        if (item?.IsSelected != true ||
+            item.Tag is not string navigationKey)
+        {
+            return;
+        }
+
+        _settingsNavigation.Navigate(navigationKey);
+    }
+
+    private SettingsNavigationController CreateSettingsNavigation()
+    {
+        FrameworkElement[] allContainers =
+        [
+            DisplaySettingsPanel,
+            AppearanceActionsPanel,
+            ColorSettingsPanel,
+            ChatSettingsPanel,
+            TalkSettingsPanel,
+            NetworkSettingsPanel,
+            AdvancedSettingsPanel,
+            AboutSettingsPanel
+        ];
+
+        var pages = new Dictionary<string, SettingsPageDefinition>
+        {
+            ["Appearance"] = new(
+                "外観",
+                [
+                    DisplaySettingsPanel,
+                    AppearanceActionsPanel,
+                    ColorSettingsPanel
+                ],
+                new Dictionary<string, FrameworkElement>
+                {
+                    ["Font"] = AppearanceFontSection,
+                    ["Layout"] = AppearanceLayoutSection,
+                    ["MenuBar"] = AppearanceMenuBarSection,
+                    ["Collapse"] = AppearanceCollapseSection,
+                    ["Color"] = AppearanceColorSection
+                }),
+            ["ChatDisplay"] = new(
+                "チャット表示",
+                [ChatSettingsPanel, AdvancedSettingsPanel, TalkSettingsPanel],
+                new Dictionary<string, FrameworkElement>
+                {
+                    ["Channels"] = ChatChannelsSection,
+                    ["Filter"] = ChatFilterSection,
+                    ["Highlight"] = ChatHighlightSection,
+                    ["Talk"] = ChatTalkSection
+                }),
+            ["System"] = new(
+                "システム",
+                [NetworkSettingsPanel],
+                new Dictionary<string, FrameworkElement>
+                {
+                    ["Network"] = SystemNetworkSection,
+                    ["Startup"] = SystemStartupSection,
+                    ["Debug"] = SystemDebugSection
+                }),
+            ["About"] = new(
+                "About",
+                [AboutSettingsPanel],
+                new Dictionary<string, FrameworkElement>())
+        };
+
+        return new SettingsNavigationController(
+            SettingsPageScrollViewer,
+            SettingsPageTitleTextBlock,
+            allContainers,
+            pages);
     }
 
     private void SettingsTitleBar_MouseLeftButtonDown(
@@ -994,10 +1056,16 @@ public partial class SettingsWindow : Window
             MentionHighlightColorPreview,
             _mentionHighlightColor);
         SetPreviewColor(
+            AppearanceMentionHighlightColorPreview,
+            _mentionHighlightColor);
+        SetPreviewColor(
             ChatTextShadowColorPreview,
             _chatTextShadowColor);
         SetPreviewColor(
             TalkHighlightBackgroundColorPreview,
+            _talkHighlightBackgroundColor);
+        SetPreviewColor(
+            AppearanceTalkHighlightBackgroundColorPreview,
             _talkHighlightBackgroundColor);
     }
 
