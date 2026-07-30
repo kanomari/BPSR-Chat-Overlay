@@ -23,6 +23,15 @@
 
   <ItemGroup>
     <Content Include="Assets\BPSRChatOverlay.ico" />
+    <Content Include="..\LICENSE"
+             Link="LICENSE.txt"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\THIRD_PARTY_NOTICES.md"
+             Link="THIRD_PARTY_NOTICES.md"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\licenses\**\*"
+             Link="licenses\%(RecursiveDir)%(Filename)%(Extension)"
+             CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
@@ -41,5 +50,34 @@
     <PackageReference Include="SharpPcap" Version="6.3.1" />
     <PackageReference Include="ZstdSharp.Port" Version="0.8.8" />
   </ItemGroup>
+
+  <Target Name="CopyDotNetRuntimeNotices"
+          AfterTargets="Publish"
+          Condition="'$(SelfContained)' == 'true'">
+    <ItemGroup>
+      <_NetCoreRuntimePack Include="@(RuntimePack)"
+                           Condition="'%(RuntimePack.FrameworkName)' == 'Microsoft.NETCore.App'" />
+      <_WindowsDesktopRuntimePack Include="@(RuntimePack)"
+                                  Condition="'%(RuntimePack.FrameworkName)' == 'Microsoft.WindowsDesktop.App'" />
+
+      <_NetCoreRuntimeLicense
+          Include="@(_NetCoreRuntimePack->'$(NuGetPackageRoot)%(NuGetPackageId)\%(NuGetPackageVersion)\LICENSE.TXT')" />
+      <_NetCoreRuntimeNotices
+          Include="@(_NetCoreRuntimePack->'$(NuGetPackageRoot)%(NuGetPackageId)\%(NuGetPackageVersion)\THIRD-PARTY-NOTICES.TXT')" />
+      <_WindowsDesktopRuntimeLicense
+          Include="@(_WindowsDesktopRuntimePack->'$(NuGetPackageRoot)%(NuGetPackageId)\%(NuGetPackageVersion)\LICENSE')" />
+    </ItemGroup>
+
+    <MakeDir Directories="$(PublishDir)licenses\dotnet" />
+    <Copy SourceFiles="@(_NetCoreRuntimeLicense)"
+          DestinationFiles="$(PublishDir)licenses\dotnet\Microsoft.NETCore.App.LICENSE.txt"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_NetCoreRuntimeNotices)"
+          DestinationFiles="$(PublishDir)licenses\dotnet\Microsoft.NETCore.App.THIRD-PARTY-NOTICES.txt"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_WindowsDesktopRuntimeLicense)"
+          DestinationFiles="$(PublishDir)licenses\dotnet\Microsoft.WindowsDesktop.App.LICENSE.txt"
+          SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>

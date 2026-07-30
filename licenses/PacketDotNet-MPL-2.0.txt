@@ -1,0 +1,15 @@
+PacketDotNet 1.4.8
+==================
+
+License: Mozilla Public License 2.0 (MPL-2.0)
+Project: https://github.com/dotpcap/packetnet
+Corresponding source:
+https://github.com/dotpcap/packetnet/tree/690707ce56d6e9c266daf6236c4f76ac5035334c
+Official license text: https://www.mozilla.org/MPL/2.0/
+
+This distribution includes the unmodified PacketDotNet.dll in executable
+form. The corresponding source code is made available at the commit URL
+above under the terms of the Mozilla Public License 2.0.
+
+The MPL-2.0 applies to PacketDotNet and does not change the license of the
+larger BPSR Chat Overlay work.
