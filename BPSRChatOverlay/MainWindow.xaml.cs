@@ -75,7 +75,7 @@ public partial class MainWindow : Window
     private bool _scrollAnchorRestoreScheduled;
     private bool _scrollAnchorProgrammaticScrollActive;
     private bool _userScrollIntent;
-    private bool _userScrollIntentResetPending;
+    private long _userScrollIntentVersion;
     private int _programmaticScrollDepth;
     private bool _clickThroughDisabledForHotkeyFailure;
     private bool _windowPlacementTrackingEnabled;
@@ -676,23 +676,25 @@ public partial class MainWindow : Window
             e.ExtentHeightChange != 0 ||
             e.ViewportHeightChange != 0;
 
-        if (verticalPositionChanged &&
-            (_userScrollIntent || !layoutChanged))
+        if (verticalPositionChanged && TryConsumeUserScrollIntent())
         {
             CancelPendingScrollAnchor();
             if (IsNearLatest(scrollViewer))
             {
-                ResumeAutoFollow(scrollToLatest: false);
+                ResumeAutoFollow(
+                    scrollToLatest: false,
+                    reason: "UserScrolledToLatest");
             }
             else
             {
-                PauseAutoFollow();
+                PauseAutoFollow(scrollViewer, e);
             }
 
             return;
         }
 
-        if (_isFollowingLatest && layoutChanged)
+        if (_isFollowingLatest &&
+            (layoutChanged || verticalPositionChanged))
         {
             QueueScrollToLatest();
             return;
@@ -702,7 +704,9 @@ public partial class MainWindow : Window
             e.ViewportHeightChange != 0 &&
             IsNearLatest(scrollViewer))
         {
-            ResumeAutoFollow(scrollToLatest: false);
+            ResumeAutoFollow(
+                scrollToLatest: false,
+                reason: "ViewportChangedNearLatest");
             return;
         }
 
@@ -741,43 +745,85 @@ public partial class MainWindow : Window
     private void MarkUserScrollIntent()
     {
         _userScrollIntent = true;
-        if (_userScrollIntentResetPending)
+        long intentVersion = ++_userScrollIntentVersion;
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
         {
-            return;
+            if (!_userScrollIntent ||
+                _userScrollIntentVersion != intentVersion)
+            {
+                return;
+            }
+
+            _userScrollIntent = false;
+        });
+    }
+
+    private bool TryConsumeUserScrollIntent()
+    {
+        if (!_userScrollIntent)
+        {
+            return false;
         }
 
-        _userScrollIntentResetPending = true;
-        Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, () =>
-        {
-            _userScrollIntent = false;
-            _userScrollIntentResetPending = false;
-        });
+        _userScrollIntent = false;
+        _userScrollIntentVersion++;
+        return true;
     }
 
     private void LatestMessageButton_Click(
         object sender,
         RoutedEventArgs e)
     {
-        ResumeAutoFollow(scrollToLatest: true);
+        ResumeAutoFollow(
+            scrollToLatest: true,
+            reason: "LatestMessageButton");
     }
 
-    private void PauseAutoFollow()
+    private void PauseAutoFollow(
+        ScrollViewer scrollViewer,
+        ScrollChangedEventArgs e)
     {
         if (_isFollowingLatest)
         {
             _hasNewMessagesWhilePaused = false;
+            Log.Information(
+                "Smart Scroll paused. Reason: {Reason}, UserScrollIntent: {UserScrollIntent}, ProgrammaticScrollDepth: {ProgrammaticScrollDepth}, VerticalOffset: {VerticalOffset}, ScrollableHeight: {ScrollableHeight}, DistanceFromLatest: {DistanceFromLatest}, VerticalChange: {VerticalChange}, ExtentHeightChange: {ExtentHeightChange}, ViewportHeightChange: {ViewportHeightChange}, HistoryCount: {HistoryCount}, DisplayedCount: {DisplayedCount}",
+                "ExplicitUserScroll",
+                true,
+                _programmaticScrollDepth,
+                scrollViewer.VerticalOffset,
+                scrollViewer.ScrollableHeight,
+                Math.Max(
+                    0,
+                    scrollViewer.ScrollableHeight -
+                    scrollViewer.VerticalOffset),
+                e.VerticalChange,
+                e.ExtentHeightChange,
+                e.ViewportHeightChange,
+                _chatHistory.Count,
+                ChatMessages.Count);
         }
 
         _isFollowingLatest = false;
         UpdateLatestMessageButtonVisibility();
     }
 
-    private void ResumeAutoFollow(bool scrollToLatest)
+    private void ResumeAutoFollow(
+        bool scrollToLatest,
+        string reason)
     {
+        bool stateChanged = !_isFollowingLatest;
         _isFollowingLatest = true;
         _hasNewMessagesWhilePaused = false;
         CancelPendingScrollAnchor();
         UpdateLatestMessageButtonVisibility();
+
+        if (stateChanged)
+        {
+            Log.Information(
+                "Smart Scroll resumed. Reason: {Reason}",
+                reason);
+        }
 
         if (scrollToLatest)
         {
@@ -819,11 +865,20 @@ public partial class MainWindow : Window
         Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
         {
             _scrollToLatestPending = false;
-            if (!_isFollowingLatest ||
-                ChatMessages.Count == 0 ||
-                _collapseState != CollapseState.Expanded ||
-                !NormalUiRoot.IsVisible)
+            string? cancellationReason = !_isFollowingLatest
+                ? "AutoFollowPaused"
+                : ChatMessages.Count == 0
+                    ? "NoDisplayedMessages"
+                    : _collapseState != CollapseState.Expanded
+                        ? "OverlayNotExpanded"
+                        : !NormalUiRoot.IsVisible
+                            ? "NormalUiNotVisible"
+                            : null;
+            if (cancellationReason is not null)
             {
+                Log.Information(
+                    "Smart Scroll latest-scroll request cancelled. Reason: {Reason}",
+                    cancellationReason);
                 UpdateLatestMessageButtonVisibility();
                 return;
             }
@@ -1312,7 +1367,9 @@ public partial class MainWindow : Window
             !IsValidWindowBounds(expandedBounds))
         {
             RestoreExpandedStateAfterAnimationFailure();
-            ResumeAutoFollow(scrollToLatest: true);
+            ResumeAutoFollow(
+                scrollToLatest: true,
+                reason: "ExpandFallback");
             return;
         }
 
@@ -1341,13 +1398,17 @@ public partial class MainWindow : Window
             _collapseState = CollapseState.Expanded;
             _expandedBounds = null;
             UpdateCollapseButtonAppearance(_appConfig.CollapseSide);
-            ResumeAutoFollow(scrollToLatest: true);
+            ResumeAutoFollow(
+                scrollToLatest: true,
+                reason: "OverlayExpanded");
         }
         catch (Exception ex) when (IsRecoverableException(ex))
         {
             Log.Error(ex, "Failed to expand the overlay window");
             RestoreExpandedStateAfterAnimationFailure();
-            ResumeAutoFollow(scrollToLatest: true);
+            ResumeAutoFollow(
+                scrollToLatest: true,
+                reason: "OverlayExpansionRecovery");
         }
     }
 
@@ -2377,7 +2438,9 @@ public partial class MainWindow : Window
 
     private void RebuildDisplayedChatMessages()
     {
-        ResumeAutoFollow(scrollToLatest: false);
+        ResumeAutoFollow(
+            scrollToLatest: false,
+            reason: "DisplayedMessagesRebuilt");
         ChatMessages.Clear();
 
         foreach (ChatMessage message in _chatHistory)
