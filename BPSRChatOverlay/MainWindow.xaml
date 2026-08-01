@@ -285,6 +285,50 @@
             </Style.Triggers>
         </Style>
 
+        <Style x:Key="LatestMessageButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Padding" Value="14,0"/>
+            <Setter Property="Background" Value="{StaticResource ChatToggleOnBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ChatToggleBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="{StaticResource ChatToggleOnForegroundBrush}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="LatestMessageButtonBorder"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="5">
+                            <ContentPresenter
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter
+                                    TargetName="LatestMessageButtonBorder"
+                                    Property="BorderBrush"
+                                    Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter
+                                    TargetName="LatestMessageButtonBorder"
+                                    Property="Background"
+                                    Value="{StaticResource ChatToggleOffBackgroundBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="ChatRowTextGridStyle" TargetType="Grid">
             <Setter Property="Effect"
                     Value="{StaticResource ChatTextShadowEffect}"/>
@@ -608,8 +652,15 @@
                             BorderThickness="0"
                             FontSize="15"
                             Padding="0"
+                            ScrollViewer.CanContentScroll="True"
                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                            ScrollViewer.VerticalScrollBarVisibility="Auto">
+                            ScrollViewer.VerticalScrollBarVisibility="Auto"
+                            ScrollViewer.ScrollChanged="ChatListBox_ScrollChanged"
+                            PreviewKeyDown="ChatListBox_PreviewKeyDown"
+                            PreviewMouseWheel="ChatListBox_PreviewMouseWheel"
+                            ScrollBar.Scroll="ChatListBox_ScrollBarScroll"
+                            VirtualizingPanel.IsVirtualizing="True"
+                            VirtualizingPanel.ScrollUnit="Pixel">
 
                             <ListBox.Resources>
                                 <Style
@@ -697,6 +748,16 @@
                             </ListBox.ItemTemplate>
                         </ListBox>
                     </Border>
+                    <Button
+                        x:Name="LatestMessageButton"
+                        Panel.ZIndex="10"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Bottom"
+                        Margin="8,8,8,10"
+                        Content="↓ 新着メッセージあり"
+                        Style="{StaticResource LatestMessageButtonStyle}"
+                        Visibility="Collapsed"
+                        Click="LatestMessageButton_Click"/>
                 </Grid>
             </Grid>
 

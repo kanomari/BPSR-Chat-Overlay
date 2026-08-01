@@ -41,6 +41,7 @@ public partial class MainWindow : Window
     private const uint DefaultDpi = 96;
     private const double ResizeBorderWidthDip = 8.0;
     private const double TopCollapsedBarHeight = 20.0;
+    private const double LatestScrollThresholdDip = 10.0;
     private const long WsExTransparent = 0x00000020L;
     private const long WsExLayered = 0x00080000L;
     private static readonly TimeSpan UiFadeDuration =
@@ -66,6 +67,16 @@ public partial class MainWindow : Window
     private GlobalHotkeyManager? _globalHotkeyManager;
     private IReadOnlyList<HotkeyRegistrationResult>
         _startupHotkeyRegistrationResults = [];
+    private ScrollViewer? _chatScrollViewer;
+    private ChatScrollAnchor? _pendingScrollAnchor;
+    private bool _isFollowingLatest = true;
+    private bool _hasNewMessagesWhilePaused;
+    private bool _scrollToLatestPending;
+    private bool _scrollAnchorRestoreScheduled;
+    private bool _scrollAnchorProgrammaticScrollActive;
+    private bool _userScrollIntent;
+    private bool _userScrollIntentResetPending;
+    private int _programmaticScrollDepth;
     private bool _clickThroughDisabledForHotkeyFailure;
     private bool _windowPlacementTrackingEnabled;
     private CollapseState _collapseState = CollapseState.Expanded;
@@ -645,6 +656,448 @@ public partial class MainWindow : Window
                $"クリックして{nextState}にします";
     }
 
+    private void ChatListBox_ScrollChanged(
+        object sender,
+        ScrollChangedEventArgs e)
+    {
+        if (e.OriginalSource is not ScrollViewer scrollViewer)
+        {
+            return;
+        }
+
+        _chatScrollViewer = scrollViewer;
+        if (_programmaticScrollDepth > 0)
+        {
+            return;
+        }
+
+        bool verticalPositionChanged = e.VerticalChange != 0;
+        bool layoutChanged =
+            e.ExtentHeightChange != 0 ||
+            e.ViewportHeightChange != 0;
+
+        if (verticalPositionChanged &&
+            (_userScrollIntent || !layoutChanged))
+        {
+            CancelPendingScrollAnchor();
+            if (IsNearLatest(scrollViewer))
+            {
+                ResumeAutoFollow(scrollToLatest: false);
+            }
+            else
+            {
+                PauseAutoFollow();
+            }
+
+            return;
+        }
+
+        if (_isFollowingLatest && layoutChanged)
+        {
+            QueueScrollToLatest();
+            return;
+        }
+
+        if (!_isFollowingLatest &&
+            e.ViewportHeightChange != 0 &&
+            IsNearLatest(scrollViewer))
+        {
+            ResumeAutoFollow(scrollToLatest: false);
+            return;
+        }
+
+        UpdateLatestMessageButtonVisibility();
+    }
+
+    private void ChatListBox_PreviewMouseWheel(
+        object sender,
+        MouseWheelEventArgs e)
+    {
+        MarkUserScrollIntent();
+    }
+
+    private void ChatListBox_PreviewKeyDown(
+        object sender,
+        KeyEventArgs e)
+    {
+        if (e.Key is Key.Up or
+            Key.Down or
+            Key.PageUp or
+            Key.PageDown or
+            Key.Home or
+            Key.End)
+        {
+            MarkUserScrollIntent();
+        }
+    }
+
+    private void ChatListBox_ScrollBarScroll(
+        object sender,
+        ScrollEventArgs e)
+    {
+        MarkUserScrollIntent();
+    }
+
+    private void MarkUserScrollIntent()
+    {
+        _userScrollIntent = true;
+        if (_userScrollIntentResetPending)
+        {
+            return;
+        }
+
+        _userScrollIntentResetPending = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, () =>
+        {
+            _userScrollIntent = false;
+            _userScrollIntentResetPending = false;
+        });
+    }
+
+    private void LatestMessageButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        ResumeAutoFollow(scrollToLatest: true);
+    }
+
+    private void PauseAutoFollow()
+    {
+        if (_isFollowingLatest)
+        {
+            _hasNewMessagesWhilePaused = false;
+        }
+
+        _isFollowingLatest = false;
+        UpdateLatestMessageButtonVisibility();
+    }
+
+    private void ResumeAutoFollow(bool scrollToLatest)
+    {
+        _isFollowingLatest = true;
+        _hasNewMessagesWhilePaused = false;
+        CancelPendingScrollAnchor();
+        UpdateLatestMessageButtonVisibility();
+
+        if (scrollToLatest)
+        {
+            QueueScrollToLatest();
+        }
+    }
+
+    private static bool IsNearLatest(ScrollViewer scrollViewer)
+    {
+        return scrollViewer.ScrollableHeight <= 0 ||
+               scrollViewer.ScrollableHeight -
+               scrollViewer.VerticalOffset <= LatestScrollThresholdDip;
+    }
+
+    private void UpdateLatestMessageButtonVisibility()
+    {
+        bool shouldShow =
+            !_isFollowingLatest &&
+            _hasNewMessagesWhilePaused &&
+            ChatMessages.Count > 0 &&
+            _chatScrollViewer is { } scrollViewer &&
+            !IsNearLatest(scrollViewer);
+
+        LatestMessageButton.Visibility = shouldShow
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    private void QueueScrollToLatest()
+    {
+        if (_scrollToLatestPending ||
+            _collapseState != CollapseState.Expanded ||
+            !NormalUiRoot.IsVisible)
+        {
+            return;
+        }
+
+        _scrollToLatestPending = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+        {
+            _scrollToLatestPending = false;
+            if (!_isFollowingLatest ||
+                ChatMessages.Count == 0 ||
+                _collapseState != CollapseState.Expanded ||
+                !NormalUiRoot.IsVisible)
+            {
+                UpdateLatestMessageButtonVisibility();
+                return;
+            }
+
+            BeginProgrammaticScroll();
+            try
+            {
+                ChatListBox.ScrollIntoView(ChatMessages[^1]);
+                _chatScrollViewer?.ScrollToEnd();
+            }
+            finally
+            {
+                EndProgrammaticScrollDeferred();
+            }
+        });
+    }
+
+    private void BeginProgrammaticScroll()
+    {
+        _programmaticScrollDepth++;
+    }
+
+    private void EndProgrammaticScrollDeferred()
+    {
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        {
+            if (_programmaticScrollDepth > 0)
+            {
+                _programmaticScrollDepth--;
+            }
+
+            UpdateLatestMessageButtonVisibility();
+        });
+    }
+
+    private bool WillRemoveDisplayedHistoryItem()
+    {
+        return _chatHistory.Count >= MaxChatMessageCount &&
+               _chatHistory.Count > 0 &&
+               ChatMessages.Contains(_chatHistory[0]);
+    }
+
+    private void PrepareScrollAnchorForHistoryTrim()
+    {
+        if (_isFollowingLatest ||
+            _pendingScrollAnchor is not null ||
+            !WillRemoveDisplayedHistoryItem())
+        {
+            return;
+        }
+
+        _pendingScrollAnchor = CaptureScrollAnchor();
+        if (_pendingScrollAnchor is not null)
+        {
+            BeginProgrammaticScroll();
+            _scrollAnchorProgrammaticScrollActive = true;
+        }
+    }
+
+    private ChatScrollAnchor? CaptureScrollAnchor()
+    {
+        if (_chatScrollViewer is not { } scrollViewer ||
+            ChatMessages.Count == 0)
+        {
+            return null;
+        }
+
+        ChatMessage? anchorMessage = null;
+        double anchorY = 0;
+        double closestY = double.PositiveInfinity;
+
+        for (int index = 0; index < ChatMessages.Count; index++)
+        {
+            if (ChatListBox.ItemContainerGenerator.ContainerFromIndex(index)
+                    is not ListBoxItem item ||
+                !TryGetRelativeY(item, scrollViewer, out double itemY) ||
+                itemY + item.ActualHeight <= 0 ||
+                itemY >= scrollViewer.ViewportHeight)
+            {
+                continue;
+            }
+
+            if (itemY < closestY)
+            {
+                closestY = itemY;
+                anchorY = itemY;
+                anchorMessage = ChatMessages[index];
+            }
+        }
+
+        int historyIndex = anchorMessage is null
+            ? 0
+            : Math.Max(0, _chatHistory.IndexOf(anchorMessage));
+        return new ChatScrollAnchor(
+            anchorMessage,
+            historyIndex,
+            anchorY,
+            scrollViewer.VerticalOffset);
+    }
+
+    private static bool TryGetRelativeY(
+        FrameworkElement element,
+        Visual ancestor,
+        out double relativeY)
+    {
+        try
+        {
+            relativeY = element
+                .TransformToAncestor(ancestor)
+                .Transform(new Point(0, 0))
+                .Y;
+            return double.IsFinite(relativeY);
+        }
+        catch (InvalidOperationException)
+        {
+            relativeY = 0;
+            return false;
+        }
+    }
+
+    private void QueuePendingScrollAnchorRestore()
+    {
+        if (_pendingScrollAnchor is null ||
+            _scrollAnchorRestoreScheduled)
+        {
+            return;
+        }
+
+        _scrollAnchorRestoreScheduled = true;
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.Loaded,
+            RestorePendingScrollAnchor);
+    }
+
+    private void RestorePendingScrollAnchor()
+    {
+        _scrollAnchorRestoreScheduled = false;
+        ChatScrollAnchor? anchor = _pendingScrollAnchor;
+        _pendingScrollAnchor = null;
+        bool releaseProgrammaticScroll =
+            _scrollAnchorProgrammaticScrollActive;
+        _scrollAnchorProgrammaticScrollActive = false;
+
+        if (anchor is null)
+        {
+            if (releaseProgrammaticScroll)
+            {
+                EndProgrammaticScrollDeferred();
+            }
+
+            return;
+        }
+
+        if (_isFollowingLatest ||
+            _chatScrollViewer is not { } scrollViewer)
+        {
+            if (releaseProgrammaticScroll)
+            {
+                EndProgrammaticScrollDeferred();
+            }
+
+            return;
+        }
+
+        ChatMessage? target = ResolveScrollAnchorTarget(anchor);
+        if (target is null)
+        {
+            scrollViewer.ScrollToVerticalOffset(Math.Clamp(
+                anchor.VerticalOffset,
+                0,
+                scrollViewer.ScrollableHeight));
+            if (releaseProgrammaticScroll)
+            {
+                EndProgrammaticScrollDeferred();
+            }
+
+            return;
+        }
+
+        try
+        {
+            ChatListBox.ScrollIntoView(target);
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+            {
+                try
+                {
+                    if (!_isFollowingLatest &&
+                        ChatListBox.ItemContainerGenerator
+                            .ContainerFromItem(target)
+                            is ListBoxItem item &&
+                        TryGetRelativeY(
+                            item,
+                            scrollViewer,
+                            out double currentY))
+                    {
+                        double restoredOffset =
+                            scrollViewer.VerticalOffset +
+                            currentY -
+                            anchor.RelativeY;
+                        scrollViewer.ScrollToVerticalOffset(Math.Clamp(
+                            restoredOffset,
+                            0,
+                            scrollViewer.ScrollableHeight));
+                    }
+                    else if (!_isFollowingLatest)
+                    {
+                        scrollViewer.ScrollToVerticalOffset(Math.Clamp(
+                            anchor.VerticalOffset,
+                            0,
+                            scrollViewer.ScrollableHeight));
+                    }
+                }
+                finally
+                {
+                    if (releaseProgrammaticScroll)
+                    {
+                        EndProgrammaticScrollDeferred();
+                    }
+                }
+            });
+        }
+        catch (Exception ex) when (IsRecoverableException(ex))
+        {
+            Log.Warning(ex, "Failed to restore the chat scroll anchor");
+            if (releaseProgrammaticScroll)
+            {
+                EndProgrammaticScrollDeferred();
+            }
+        }
+    }
+
+    private ChatMessage? ResolveScrollAnchorTarget(ChatScrollAnchor anchor)
+    {
+        if (anchor.Message is { } message &&
+            ChatMessages.Contains(message))
+        {
+            return message;
+        }
+
+        if (_chatHistory.Count == 0 || ChatMessages.Count == 0)
+        {
+            return null;
+        }
+
+        int startIndex = Math.Clamp(
+            anchor.HistoryIndex,
+            0,
+            _chatHistory.Count - 1);
+        for (int distance = 0; distance < _chatHistory.Count; distance++)
+        {
+            int forwardIndex = startIndex + distance;
+            if (forwardIndex < _chatHistory.Count &&
+                ChatMessages.Contains(_chatHistory[forwardIndex]))
+            {
+                return _chatHistory[forwardIndex];
+            }
+
+            int backwardIndex = startIndex - distance;
+            if (distance > 0 &&
+                backwardIndex >= 0 &&
+                ChatMessages.Contains(_chatHistory[backwardIndex]))
+            {
+                return _chatHistory[backwardIndex];
+            }
+        }
+
+        return null;
+    }
+
+    private void CancelPendingScrollAnchor()
+    {
+        _pendingScrollAnchor = null;
+    }
+
     private void UpdateCollapseButtonAppearance(string? configuredSide)
     {
         string side = AppConfig.NormalizeCollapseSide(configuredSide);
@@ -859,6 +1312,7 @@ public partial class MainWindow : Window
             !IsValidWindowBounds(expandedBounds))
         {
             RestoreExpandedStateAfterAnimationFailure();
+            ResumeAutoFollow(scrollToLatest: true);
             return;
         }
 
@@ -887,11 +1341,13 @@ public partial class MainWindow : Window
             _collapseState = CollapseState.Expanded;
             _expandedBounds = null;
             UpdateCollapseButtonAppearance(_appConfig.CollapseSide);
+            ResumeAutoFollow(scrollToLatest: true);
         }
         catch (Exception ex) when (IsRecoverableException(ex))
         {
             Log.Error(ex, "Failed to expand the overlay window");
             RestoreExpandedStateAfterAnimationFailure();
+            ResumeAutoFollow(scrollToLatest: true);
         }
     }
 
@@ -1624,6 +2080,8 @@ public partial class MainWindow : Window
                         }
                     }
 
+                    bool shouldFollowLatest = _isFollowingLatest;
+                    PrepareScrollAnchorForHistoryTrim();
                     AddToChatHistory(message);
 
                     bool shouldDisplay = isTalk
@@ -1635,12 +2093,24 @@ public partial class MainWindow : Window
                         ChatMessages.Add(message);
                     }
 
+                    QueuePendingScrollAnchorRestore();
+
                     ChatCountText.Text =
                         $"受信件数: {_chatHistory.Count:N0}";
 
                     if (shouldDisplay)
                     {
-                        ChatListBox.ScrollIntoView(message);
+                        if (shouldFollowLatest)
+                        {
+                            _hasNewMessagesWhilePaused = false;
+                            QueueScrollToLatest();
+                        }
+                        else
+                        {
+                            _hasNewMessagesWhilePaused = true;
+                            UpdateLatestMessageButtonVisibility();
+                        }
+
                         if (isTalk && message.IsTalkHighlighted)
                         {
                             BeginTalkHighlight(message);
@@ -1907,6 +2377,7 @@ public partial class MainWindow : Window
 
     private void RebuildDisplayedChatMessages()
     {
+        ResumeAutoFollow(scrollToLatest: false);
         ChatMessages.Clear();
 
         foreach (ChatMessage message in _chatHistory)
@@ -1917,10 +2388,8 @@ public partial class MainWindow : Window
             }
         }
 
-        if (ChatMessages.Count > 0)
-        {
-            ChatListBox.ScrollIntoView(ChatMessages[^1]);
-        }
+        QueueScrollToLatest();
+        UpdateLatestMessageButtonVisibility();
     }
 
     private void UpdateCaptureStatus(object? sender, EventArgs e)
@@ -2116,6 +2585,12 @@ public partial class MainWindow : Window
         public int Right;
         public int Bottom;
     }
+
+    private sealed record ChatScrollAnchor(
+        ChatMessage? Message,
+        int HistoryIndex,
+        double RelativeY,
+        double VerticalOffset);
 
     private enum CollapseState
     {
