@@ -99,6 +99,10 @@ public sealed class AppConfig
 
     public string ChatFilterKeywords { get; set; } = string.Empty;
 
+    public string HiddenChatKeywords { get; set; } = string.Empty;
+
+    public bool IncludeSenderNameInHiddenChatKeywords { get; set; } = false;
+
     public string WorldChatTextColor { get; set; } = "#FFBA55D3";
 
     public string ChannelChatTextColor { get; set; } = "#FFFFFFFF";
@@ -146,6 +150,8 @@ public sealed class AppConfig
         DefaultEdgeHandleOpacity;
 
     public bool CheckForUpdatesOnStartup { get; set; } = true;
+
+    public HotkeySettings Hotkeys { get; set; } = new();
 
     public DateTime? LastSuccessfulUpdateCheckUtc { get; set; }
 

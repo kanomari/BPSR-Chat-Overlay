@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using BPSRChatOverlay.Hotkeys;
 using Serilog;
 
 namespace BPSRChatOverlay.Config;
@@ -410,7 +411,65 @@ public static class ConfigManager
             config.CollapseSide = normalizedCollapseSide;
         }
 
+        NormalizeHotkeys(config, defaults);
+
         NormalizeRequiredStrings(config, defaults);
+    }
+
+    private static void NormalizeHotkeys(
+        AppConfig config,
+        AppConfig defaults)
+    {
+        if (config.Hotkeys is null)
+        {
+            LogCorrection(
+                nameof(AppConfig.Hotkeys),
+                "The hotkey settings were null.");
+            config.Hotkeys = defaults.Hotkeys.Clone();
+            return;
+        }
+
+        if (HotkeyUtilities.Validate(
+                config.Hotkeys.ClickThroughToggle,
+                required: true) != HotkeyValidationError.None)
+        {
+            LogCorrection(
+                $"{nameof(AppConfig.Hotkeys)}.{nameof(HotkeySettings.ClickThroughToggle)}",
+                "The required click-through hotkey was invalid.");
+            config.Hotkeys.ClickThroughToggle =
+                HotkeyGestureConfig.CreateDefaultClickThrough();
+        }
+
+        HotkeyValidationError collapseError = HotkeyUtilities.Validate(
+            config.Hotkeys.CollapseToggle,
+            required: false);
+        if (config.Hotkeys.CollapseToggle is null ||
+            collapseError != HotkeyValidationError.None)
+        {
+            LogCorrection(
+                $"{nameof(AppConfig.Hotkeys)}.{nameof(HotkeySettings.CollapseToggle)}",
+                "The collapse hotkey was invalid.");
+            config.Hotkeys.CollapseToggle =
+                HotkeyGestureConfig.CreateDefaultCollapse();
+        }
+
+        if (!HotkeyUtilities.AreEqual(
+                config.Hotkeys.ClickThroughToggle,
+                config.Hotkeys.CollapseToggle))
+        {
+            return;
+        }
+
+        LogCorrection(
+            nameof(AppConfig.Hotkeys),
+            "The configured hotkeys were duplicates.");
+        HotkeyGestureConfig defaultCollapse =
+            HotkeyGestureConfig.CreateDefaultCollapse();
+        config.Hotkeys.CollapseToggle = HotkeyUtilities.AreEqual(
+            config.Hotkeys.ClickThroughToggle,
+            defaultCollapse)
+            ? HotkeyGestureConfig.CreateUnset()
+            : defaultCollapse;
     }
 
     private static int NormalizeInt(
@@ -498,6 +557,10 @@ public static class ConfigManager
             config.ChatFilterKeywords,
             defaults.ChatFilterKeywords,
             nameof(AppConfig.ChatFilterKeywords));
+        config.HiddenChatKeywords = NormalizeString(
+            config.HiddenChatKeywords,
+            defaults.HiddenChatKeywords,
+            nameof(AppConfig.HiddenChatKeywords));
         config.WorldChatTextColor = NormalizeString(
             config.WorldChatTextColor,
             defaults.WorldChatTextColor,

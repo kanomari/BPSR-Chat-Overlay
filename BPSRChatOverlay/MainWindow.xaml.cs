@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -13,6 +14,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Media3D;
 using System.Windows.Threading;
 using BPSRChatOverlay.Config;
+using BPSRChatOverlay.Hotkeys;
 using BPSRChatOverlay.Managers;
 using BPSRChatOverlay.Models;
 using BPSRChatOverlay.UIResources;
@@ -25,8 +27,6 @@ namespace BPSRChatOverlay;
 public partial class MainWindow : Window
 {
     private const int MaxChatMessageCount = 500;
-    private const int ClickThroughHotKeyId = 0x4250;
-    private const int CollapseHotKeyId = 0x4249;
     private const int GwlExStyle = -20;
     private const int WmNcHitTest = 0x0084;
     private const int WmHotKey = 0x0312;
@@ -37,11 +37,6 @@ public partial class MainWindow : Window
     private const int HtBottom = 15;
     private const int HtBottomLeft = 16;
     private const int HtBottomRight = 17;
-    private const uint ModShift = 0x0004;
-    private const uint ModControl = 0x0002;
-    private const uint ModNoRepeat = 0x4000;
-    private const uint VkF9 = 0x78;
-    private const uint VkF10 = 0x79;
     private const uint MonitorDefaultToNearest = 0x00000002;
     private const uint DefaultDpi = 96;
     private const double ResizeBorderWidthDip = 8.0;
@@ -64,11 +59,14 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _windowPlacementSaveTimer;
     private AppConfig _appConfig = new();
     private string[] _chatFilterKeywords = [];
+    private string[] _hiddenChatKeywords = [];
     private string[] _mentionKeywords = [];
     private IntPtr _windowHandle;
     private HwndSource? _windowSource;
-    private bool _clickThroughHotKeyRegistered;
-    private bool _collapseHotKeyRegistered;
+    private GlobalHotkeyManager? _globalHotkeyManager;
+    private IReadOnlyList<HotkeyRegistrationResult>
+        _startupHotkeyRegistrationResults = [];
+    private bool _clickThroughDisabledForHotkeyFailure;
     private bool _windowPlacementTrackingEnabled;
     private CollapseState _collapseState = CollapseState.Expanded;
     private Rect? _expandedBounds;
@@ -149,6 +147,8 @@ public partial class MainWindow : Window
         EventArgs e)
     {
         ContentRendered -= MainWindow_ContentRendered;
+
+        ShowStartupHotkeyRegistrationFailures();
 
         try
         {
@@ -280,36 +280,121 @@ public partial class MainWindow : Window
         _windowSource = HwndSource.FromHwnd(_windowHandle);
         _windowSource?.AddHook(WindowMessageHook);
 
-        _clickThroughHotKeyRegistered = RegisterHotKey(
-            _windowHandle,
-            ClickThroughHotKeyId,
-            ModControl | ModShift,
-            VkF10);
+        _globalHotkeyManager = new GlobalHotkeyManager(_windowHandle);
+        _startupHotkeyRegistrationResults =
+            _globalHotkeyManager.RegisterInitial(_appConfig.Hotkeys);
 
-        if (!_clickThroughHotKeyRegistered)
+        bool clickThroughHotkeyFailed =
+            _startupHotkeyRegistrationResults.Any(result =>
+                result.Action == HotkeyAction.ClickThroughToggle &&
+                result.State == HotkeyRegistrationState.Failed);
+        if (clickThroughHotkeyFailed && _appConfig.ClickThrough)
         {
-            Debug.WriteLine("Failed to register Ctrl + Shift + F10.");
-        }
-
-        _collapseHotKeyRegistered = RegisterHotKey(
-            _windowHandle,
-            CollapseHotKeyId,
-            ModControl | ModShift | ModNoRepeat,
-            VkF9);
-
-        if (!_collapseHotKeyRegistered)
-        {
-            Debug.WriteLine("Failed to register Ctrl + Shift + F9.");
-            Log.Warning("Failed to register Ctrl + Shift + F9");
+            _appConfig.ClickThrough = false;
+            _clickThroughDisabledForHotkeyFailure = true;
+            SaveConfigSafely(_appConfig);
         }
 
         ApplyDisplaySettings(_appConfig);
         _windowPlacementTrackingEnabled = true;
     }
 
+    private void ShowStartupHotkeyRegistrationFailures()
+    {
+        if (!_startupHotkeyRegistrationResults.Any(result =>
+                result.State == HotkeyRegistrationState.Failed))
+        {
+            return;
+        }
+
+        var message = new StringBuilder(
+            "一部のホットキーを登録できませんでした。\n\n");
+        AppendHotkeyRegistrationResults(
+            message,
+            _startupHotkeyRegistrationResults,
+            registrationSucceededText: "登録成功");
+
+        if (_clickThroughDisabledForHotkeyFailure)
+        {
+            message.AppendLine();
+            message.AppendLine(
+                "操作不能を防ぐため、クリック透過をOFFに戻しました。");
+        }
+
+        message.AppendLine();
+        message.Append(
+            "他のアプリとの競合がないか確認し、\n" +
+            "「システム ＞ ホットキー」から変更してください。");
+
+        MessageBox.Show(
+            this,
+            message.ToString(),
+            "BPSR Chat Overlay",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+        _startupHotkeyRegistrationResults = [];
+    }
+
+    private void ShowHotkeyUpdateFailure(
+        IReadOnlyList<HotkeyRegistrationResult> results)
+    {
+        var message = new StringBuilder(
+            "ホットキーを変更できませんでした。\n\n");
+        AppendHotkeyRegistrationResults(
+            message,
+            results,
+            registrationSucceededText: "登録成功（適用は中止）");
+        message.AppendLine();
+        message.Append(
+            "設定と現在有効なホットキーは変更されていません。");
+
+        MessageBox.Show(
+            this,
+            message.ToString(),
+            "BPSR Chat Overlay",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+    }
+
+    private static void AppendHotkeyRegistrationResults(
+        StringBuilder message,
+        IEnumerable<HotkeyRegistrationResult> results,
+        string registrationSucceededText)
+    {
+        foreach (HotkeyRegistrationResult result in results)
+        {
+            message.Append(
+                HotkeyUtilities.GetActionDisplayName(result.Action));
+            message.Append("：");
+
+            switch (result.State)
+            {
+                case HotkeyRegistrationState.Registered:
+                    message.Append(registrationSucceededText);
+                    break;
+                case HotkeyRegistrationState.NotConfigured:
+                    message.Append("未設定");
+                    break;
+                case HotkeyRegistrationState.Failed:
+                    if (result.Gesture is { } gesture)
+                    {
+                        message.Append(HotkeyUtilities.FormatGesture(gesture));
+                        message.Append(" — ");
+                    }
+
+                    message.Append("登録失敗");
+                    message.Append($"（Win32エラー: {result.ErrorCode}）");
+                    break;
+            }
+
+            message.AppendLine();
+        }
+    }
+
     private void ApplyDisplaySettings(AppConfig config)
     {
         _chatFilterKeywords = ParseKeywords(config.ChatFilterKeywords);
+        _hiddenChatKeywords = ParseKeywords(config.HiddenChatKeywords);
         _mentionKeywords = ParseKeywords(config.MentionKeywords);
         ChatColors.Apply(
             config.WorldChatTextColor,
@@ -392,12 +477,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (config.ClickThrough && !_clickThroughHotKeyRegistered)
-        {
-            config.ClickThrough = false;
-            SaveConfigSafely(config);
-        }
-
         ApplyClickThrough(config.ClickThrough);
     }
 
@@ -413,15 +492,42 @@ public partial class MainWindow : Window
         if (settingsWindow.ShowDialog() == true &&
             settingsWindow.SavedConfig is { } savedConfig)
         {
-            if (!SaveConfigSafely(savedConfig))
+            if (_globalHotkeyManager is null)
             {
                 MessageBox.Show(
                     this,
-                    "設定を保存できませんでした。ログを確認してください。",
+                    "ホットキー管理を初期化できていないため、設定を保存できません。",
                     "BPSR Chat Overlay",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
+            }
+
+            HotkeyUpdatePreparation preparation =
+                _globalHotkeyManager.PrepareUpdate(savedConfig.Hotkeys);
+            if (!preparation.IsSuccess ||
+                preparation.PreparedUpdate is not { } preparedUpdate)
+            {
+                ShowHotkeyUpdateFailure(preparation.Results);
+                return;
+            }
+
+            using (preparedUpdate)
+            {
+                if (!SaveConfigSafely(savedConfig))
+                {
+                    preparedUpdate.Rollback();
+                    MessageBox.Show(
+                        this,
+                        "設定を保存できませんでした。ログを確認してください。\n\n" +
+                        "設定と現在有効なホットキーは変更されていません。",
+                        "BPSR Chat Overlay",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                preparedUpdate.Commit();
             }
 
             _appConfig = savedConfig;
@@ -1150,17 +1256,21 @@ public partial class MainWindow : Window
         ref bool handled)
     {
         if (message == WmHotKey &&
-            wParam.ToInt32() == ClickThroughHotKeyId)
+            _globalHotkeyManager?.TryGetAction(
+                wParam.ToInt32(),
+                out HotkeyAction hotkeyAction) == true)
         {
-            _appConfig.ClickThrough = !_appConfig.ClickThrough;
-            ApplyClickThrough(_appConfig.ClickThrough);
-            SaveConfigSafely(_appConfig);
-            handled = true;
-        }
-        else if (message == WmHotKey &&
-                 wParam.ToInt32() == CollapseHotKeyId)
-        {
-            ToggleCollapse();
+            if (hotkeyAction == HotkeyAction.ClickThroughToggle)
+            {
+                _appConfig.ClickThrough = !_appConfig.ClickThrough;
+                ApplyClickThrough(_appConfig.ClickThrough);
+                SaveConfigSafely(_appConfig);
+            }
+            else if (hotkeyAction == HotkeyAction.CollapseToggle)
+            {
+                ToggleCollapse();
+            }
+
             handled = true;
         }
         else if (message == WmNcHitTest &&
@@ -1675,10 +1785,15 @@ public partial class MainWindow : Window
             _ => true
         };
 
-        return message.ChannelType ==
-            (int)Zproto.ChitChatChannelType.ChannelPrivate
-            ? matchesChannelFilter
-            : matchesChannelFilter && MatchesKeywordFilter(message);
+        if (message.ChannelType ==
+            (int)Zproto.ChitChatChannelType.ChannelPrivate)
+        {
+            return matchesChannelFilter;
+        }
+
+        return matchesChannelFilter &&
+               !MatchesHiddenChatKeywords(message) &&
+               MatchesKeywordFilter(message);
     }
 
     private void LogUnknownChannelType(int channelType)
@@ -1721,10 +1836,35 @@ public partial class MainWindow : Window
             messageText.Contains(keyword, StringComparison.OrdinalIgnoreCase));
     }
 
+    private bool MatchesHiddenChatKeywords(ChatMessage message)
+    {
+        if (message.ChannelType ==
+                (int)Zproto.ChitChatChannelType.ChannelPrivate ||
+            _hiddenChatKeywords.Length == 0)
+        {
+            return false;
+        }
+
+        string messageText = message.Message ?? string.Empty;
+        string senderName = message.SenderName ?? string.Empty;
+        bool includeSenderName =
+            _appConfig.IncludeSenderNameInHiddenChatKeywords;
+
+        return _hiddenChatKeywords.Any(keyword =>
+            messageText.Contains(
+                keyword,
+                StringComparison.OrdinalIgnoreCase) ||
+            includeSenderName &&
+            senderName.Contains(
+                keyword,
+                StringComparison.OrdinalIgnoreCase));
+    }
+
     private bool IsMentionMessage(ChatMessage message)
     {
         if (message.ChannelType ==
                 (int)Zproto.ChitChatChannelType.ChannelPrivate ||
+            MatchesHiddenChatKeywords(message) ||
             !_appConfig.EnableMentionNotification ||
             _mentionKeywords.Length == 0)
         {
@@ -1831,38 +1971,8 @@ public partial class MainWindow : Window
             "Failed to save window placement during shutdown");
 
         RunShutdownAction(
-            () =>
-            {
-                if (!_clickThroughHotKeyRegistered)
-                {
-                    return;
-                }
-
-                if (!UnregisterHotKey(_windowHandle, ClickThroughHotKeyId))
-                {
-                    Log.Warning("Failed to unregister click-through hot key");
-                }
-
-                _clickThroughHotKeyRegistered = false;
-            },
-            "Failed to unregister click-through hot key");
-
-        RunShutdownAction(
-            () =>
-            {
-                if (!_collapseHotKeyRegistered)
-                {
-                    return;
-                }
-
-                if (!UnregisterHotKey(_windowHandle, CollapseHotKeyId))
-                {
-                    Log.Warning("Failed to unregister collapse hot key");
-                }
-
-                _collapseHotKeyRegistered = false;
-            },
-            "Failed to unregister collapse hot key");
+            () => _globalHotkeyManager?.Dispose(),
+            "Failed to unregister global hotkeys");
 
         RunShutdownAction(
             () => _windowSource?.RemoveHook(WindowMessageHook),
@@ -1969,20 +2079,6 @@ public partial class MainWindow : Window
         IntPtr windowHandle,
         int index,
         int newValue);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool RegisterHotKey(
-        IntPtr windowHandle,
-        int id,
-        uint modifiers,
-        uint virtualKey);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool UnregisterHotKey(
-        IntPtr windowHandle,
-        int id);
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

@@ -602,7 +602,7 @@
                TargetType="ListBoxItem"
                BasedOn="{StaticResource CategoryItemStyle}">
             <Setter Property="Foreground" Value="{DynamicResource SettingsMutedTextBrush}"/>
-            <Setter Property="Padding" Value="44,5,10,5"/>
+            <Setter Property="Padding" Value="44,4,10,4"/>
             <Setter Property="Margin" Value="8,0"/>
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="FontWeight" Value="Normal"/>
@@ -800,6 +800,10 @@
                                          Style="{StaticResource SubcategoryItemStyle}"/>
                             <ListBoxItem Content="起動"
                                          Tag="System:Startup"
+                                         Style="{StaticResource SubcategoryItemStyle}"/>
+                            <ListBoxItem x:Name="SystemHotkeysNavigationItem"
+                                         Content="ホットキー"
+                                         Tag="System:Hotkeys"
                                          Style="{StaticResource SubcategoryItemStyle}"/>
                             <ListBoxItem Content="デバッグ"
                                          Tag="System:Debug"
@@ -1225,6 +1229,10 @@
                                         Margin="174,4,0,0"
                                         Text="左・右・下の収納ハンドルに適用します。"
                                         Style="{StaticResource DescriptionStyle}"/>
+                                    <Button Content="ホットキー設定を開く"
+                                            HorizontalAlignment="Left"
+                                            Margin="24,14,0,0"
+                                            Click="OpenHotkeySettingsButton_Click"/>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
@@ -1487,6 +1495,156 @@
                                               Content="起動時に更新を確認する"/>
                                 </StackPanel>
                             </Border>
+                            <Border x:Name="SystemHotkeysSection"
+                                    Style="{StaticResource CardStyle}"
+                                    Margin="0,14,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="ホットキー"
+                                               Style="{StaticResource GroupTitleStyle}"/>
+                                    <TextBlock
+                                        Text="修飾キーを選び、主キー欄をクリックしてキーを入力します。"
+                                        Style="{StaticResource DescriptionStyle}"/>
+
+                                    <Border Margin="0,14,0,0"
+                                            Padding="12"
+                                            Background="{DynamicResource SettingsInputBrush}"
+                                            BorderBrush="{DynamicResource SettingsBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="4">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Text="クリック透過切替"
+                                                       FontWeight="SemiBold"/>
+                                            <StackPanel Grid.Row="1"
+                                                        Orientation="Horizontal"
+                                                        Margin="0,6,0,0">
+                                                <CheckBox x:Name="ClickThroughHotkeyControlCheckBox"
+                                                          Content="Ctrl"
+                                                          Tag="ClickThroughToggle"
+                                                          Checked="HotkeyModifierCheckBox_Changed"
+                                                          Unchecked="HotkeyModifierCheckBox_Changed"/>
+                                                <CheckBox x:Name="ClickThroughHotkeyShiftCheckBox"
+                                                          Content="Shift"
+                                                          Tag="ClickThroughToggle"
+                                                          Margin="14,6,0,6"
+                                                          Checked="HotkeyModifierCheckBox_Changed"
+                                                          Unchecked="HotkeyModifierCheckBox_Changed"/>
+                                                <CheckBox x:Name="ClickThroughHotkeyAltCheckBox"
+                                                          Content="Alt"
+                                                          Tag="ClickThroughToggle"
+                                                          Margin="14,6,0,6"
+                                                          Checked="HotkeyModifierCheckBox_Changed"
+                                                          Unchecked="HotkeyModifierCheckBox_Changed"/>
+                                            </StackPanel>
+                                            <Grid Grid.Row="2" Margin="0,4,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox x:Name="ClickThroughHotkeyKeyTextBox"
+                                                         Tag="ClickThroughToggle"
+                                                         IsReadOnly="True"
+                                                         Focusable="True"
+                                                         Cursor="Hand"
+                                                         HorizontalContentAlignment="Center"
+                                                         InputMethod.IsInputMethodEnabled="False"
+                                                         PreviewMouseLeftButtonDown="HotkeyKeyTextBox_PreviewMouseLeftButtonDown"
+                                                         PreviewMouseRightButtonDown="HotkeyKeyTextBox_PreviewMouseRightButtonDown"
+                                                         PreviewKeyDown="HotkeyKeyTextBox_PreviewKeyDown"
+                                                         LostKeyboardFocus="HotkeyKeyTextBox_LostKeyboardFocus"/>
+                                                <Button Grid.Column="1"
+                                                        Content="クリア"
+                                                        Tag="ClickThroughToggle"
+                                                        Margin="8,0,0,0"
+                                                        Click="ClearHotkeyButton_Click"/>
+                                            </Grid>
+                                            <TextBlock x:Name="ClickThroughHotkeyStatusText"
+                                                       Grid.Row="3"
+                                                       Margin="0,7,0,0"
+                                                       Foreground="#FFFF7777"
+                                                       TextWrapping="Wrap"
+                                                       Visibility="Collapsed"/>
+                                        </Grid>
+                                    </Border>
+
+                                    <Border Margin="0,12,0,0"
+                                            Padding="12"
+                                            Background="{DynamicResource SettingsInputBrush}"
+                                            BorderBrush="{DynamicResource SettingsBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="4">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Text="収納／展開切替"
+                                                       FontWeight="SemiBold"/>
+                                            <StackPanel Grid.Row="1"
+                                                        Orientation="Horizontal"
+                                                        Margin="0,6,0,0">
+                                                <CheckBox x:Name="CollapseHotkeyControlCheckBox"
+                                                          Content="Ctrl"
+                                                          Tag="CollapseToggle"
+                                                          Checked="HotkeyModifierCheckBox_Changed"
+                                                          Unchecked="HotkeyModifierCheckBox_Changed"/>
+                                                <CheckBox x:Name="CollapseHotkeyShiftCheckBox"
+                                                          Content="Shift"
+                                                          Tag="CollapseToggle"
+                                                          Margin="14,6,0,6"
+                                                          Checked="HotkeyModifierCheckBox_Changed"
+                                                          Unchecked="HotkeyModifierCheckBox_Changed"/>
+                                                <CheckBox x:Name="CollapseHotkeyAltCheckBox"
+                                                          Content="Alt"
+                                                          Tag="CollapseToggle"
+                                                          Margin="14,6,0,6"
+                                                          Checked="HotkeyModifierCheckBox_Changed"
+                                                          Unchecked="HotkeyModifierCheckBox_Changed"/>
+                                            </StackPanel>
+                                            <Grid Grid.Row="2" Margin="0,4,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox x:Name="CollapseHotkeyKeyTextBox"
+                                                         Tag="CollapseToggle"
+                                                         IsReadOnly="True"
+                                                         Focusable="True"
+                                                         Cursor="Hand"
+                                                         HorizontalContentAlignment="Center"
+                                                         InputMethod.IsInputMethodEnabled="False"
+                                                         PreviewMouseLeftButtonDown="HotkeyKeyTextBox_PreviewMouseLeftButtonDown"
+                                                         PreviewMouseRightButtonDown="HotkeyKeyTextBox_PreviewMouseRightButtonDown"
+                                                         PreviewKeyDown="HotkeyKeyTextBox_PreviewKeyDown"
+                                                         LostKeyboardFocus="HotkeyKeyTextBox_LostKeyboardFocus"/>
+                                                <Button Grid.Column="1"
+                                                        Content="クリア"
+                                                        Tag="CollapseToggle"
+                                                        Margin="8,0,0,0"
+                                                        Click="ClearHotkeyButton_Click"/>
+                                            </Grid>
+                                            <TextBlock x:Name="CollapseHotkeyStatusText"
+                                                       Grid.Row="3"
+                                                       Margin="0,7,0,0"
+                                                       Foreground="#FFFF7777"
+                                                       TextWrapping="Wrap"
+                                                       Visibility="Collapsed"/>
+                                        </Grid>
+                                    </Border>
+
+                                    <TextBlock
+                                        Text="主キー欄の右クリックまたはクリアボタンで解除できます。クリック透過切替は必須です。"
+                                        Style="{StaticResource DescriptionStyle}"
+                                        Margin="0,10,0,0"/>
+                                </StackPanel>
+                            </Border>
                             <Border x:Name="SystemDebugSection"
                                     Style="{StaticResource CardStyle}"
                                     Margin="0,14,0,0">
@@ -1516,7 +1674,7 @@
                                 <StackPanel>
                                     <TextBlock Text="キーワードフィルター"
                                                Style="{StaticResource GroupTitleStyle}"/>
-                                    <TextBlock Text="入力したキーワードを含むチャットのみ表示します。"
+                                    <TextBlock Text="キーワードによるチャットの表示・非表示を設定します。"
                                                Style="{StaticResource DescriptionStyle}"/>
                                     <CheckBox x:Name="EnableChatFilterCheckBox"
                                               Content="キーワードフィルターを有効にする"
@@ -1526,7 +1684,7 @@
                                         IsChecked="{Binding IsChecked,
                                             ElementName=ShowChatFilterToggleCheckBox,
                                             Mode=TwoWay}"/>
-                                    <TextBlock Text="キーワード設定"
+                                    <TextBlock Text="表示するキーワード"
                                                Margin="0,14,0,0"
                                                FontWeight="SemiBold"/>
                                     <TextBox x:Name="ChatFilterKeywordsTextBox"
@@ -1538,6 +1696,44 @@
                                              VerticalScrollBarVisibility="Auto"/>
                                     <TextBlock Text="スペースまたは改行で複数指定できます。"
                                                Style="{StaticResource DescriptionStyle}"/>
+
+                                    <Border Height="1"
+                                            Margin="0,16,0,14"
+                                            Background="{DynamicResource SettingsBorderBrush}"/>
+                                    <TextBlock Text="表示しないキーワード"
+                                               FontWeight="SemiBold"/>
+                                    <TextBlock
+                                        Text="指定したキーワードを本文に含むチャットを表示しません。"
+                                        Style="{StaticResource DescriptionStyle}"/>
+                                    <Border Margin="0,10,0,0"
+                                            Padding="10,8"
+                                            Background="{DynamicResource SettingsNoticeBrush}"
+                                            BorderBrush="{DynamicResource SettingsAccentBrush}"
+                                            BorderThickness="3,1,1,1"
+                                            CornerRadius="4">
+                                        <StackPanel>
+                                            <TextBlock
+                                                Text="※ キーワードフィルターのON/OFFに関係なく、常に適用されます。"
+                                                Style="{StaticResource NoticeTextStyle}"/>
+                                            <TextBlock
+                                                Margin="0,5,0,0"
+                                                Text="※ 「表示するキーワード」と両方に一致した場合は、「表示しないキーワード」が優先されます。"
+                                                Style="{StaticResource NoticeTextStyle}"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <TextBox x:Name="HiddenChatKeywordsTextBox"
+                                             Height="72"
+                                             Margin="0,8,0,0"
+                                             AcceptsReturn="True"
+                                             TextWrapping="Wrap"
+                                             VerticalContentAlignment="Top"
+                                             VerticalScrollBarVisibility="Auto"/>
+                                    <TextBlock Text="スペースまたは改行で複数指定できます。"
+                                               Style="{StaticResource DescriptionStyle}"/>
+                                    <CheckBox
+                                        x:Name="IncludeSenderNameInHiddenChatKeywordsCheckBox"
+                                        Content="発言者名も対象にする"
+                                        Margin="0,10,0,0"/>
                                 </StackPanel>
                             </Border>
 

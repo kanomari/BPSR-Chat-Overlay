@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Navigation;
 using BPSRChatOverlay.Config;
+using BPSRChatOverlay.Hotkeys;
 using BPSRChatOverlay.Models;
 using BPSRChatOverlay.Settings;
 using BPSRChatOverlay.UIResources;
@@ -39,6 +40,12 @@ public partial class SettingsWindow : Window
     private string _mentionHighlightColor;
     private string _chatTextShadowColor;
     private string _talkHighlightBackgroundColor;
+    private HotkeyGestureConfig _clickThroughHotkey =
+        HotkeyGestureConfig.CreateDefaultClickThrough();
+    private HotkeyGestureConfig _collapseHotkey =
+        HotkeyGestureConfig.CreateDefaultCollapse();
+    private HotkeyAction? _capturingHotkeyAction;
+    private bool _updatingHotkeyControls;
 
     public AppConfig? SavedConfig { get; private set; }
 
@@ -49,6 +56,7 @@ public partial class SettingsWindow : Window
         InitializeComponent();
 
         _currentConfig = currentConfig;
+        InitializeHotkeyControls(currentConfig.Hotkeys);
         _settingsNavigation = CreateSettingsNavigation();
         CurrentVersionTextBlock.Text =
             AppVersionProvider.CurrentVersionText;
@@ -156,6 +164,10 @@ public partial class SettingsWindow : Window
         EnableChatFilterCheckBox.IsChecked =
             currentConfig.EnableChatFilter;
         ChatFilterKeywordsTextBox.Text = currentConfig.ChatFilterKeywords;
+        HiddenChatKeywordsTextBox.Text =
+            currentConfig.HiddenChatKeywords ?? string.Empty;
+        IncludeSenderNameInHiddenChatKeywordsCheckBox.IsChecked =
+            currentConfig.IncludeSenderNameInHiddenChatKeywords;
         EnableMentionNotificationCheckBox.IsChecked =
             currentConfig.EnableMentionNotification;
         EnableMentionSoundCheckBox.IsChecked =
@@ -254,6 +266,7 @@ public partial class SettingsWindow : Window
                 {
                     ["Network"] = SystemNetworkSection,
                     ["Startup"] = SystemStartupSection,
+                    ["Hotkeys"] = SystemHotkeysSection,
                     ["Debug"] = SystemDebugSection
                 }),
             ["About"] = new(
@@ -289,6 +302,352 @@ public partial class SettingsWindow : Window
         }
     }
 
+    private void OpenHotkeySettingsButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        NavigateToHotkeySettings();
+    }
+
+    private void NavigateToHotkeySettings()
+    {
+        if (SystemHotkeysNavigationItem.IsSelected)
+        {
+            _settingsNavigation.Navigate("System:Hotkeys");
+            return;
+        }
+
+        CategoryListBox.SelectedItem = SystemHotkeysNavigationItem;
+    }
+
+    private void InitializeHotkeyControls(HotkeySettings? settings)
+    {
+        HotkeySettings effectiveSettings = settings ?? new HotkeySettings();
+        _clickThroughHotkey =
+            effectiveSettings.ClickThroughToggle?.Clone() ??
+            HotkeyGestureConfig.CreateDefaultClickThrough();
+        _collapseHotkey =
+            effectiveSettings.CollapseToggle?.Clone() ??
+            HotkeyGestureConfig.CreateDefaultCollapse();
+
+        _updatingHotkeyControls = true;
+        try
+        {
+            ClickThroughHotkeyControlCheckBox.IsChecked =
+                _clickThroughHotkey.Control;
+            ClickThroughHotkeyShiftCheckBox.IsChecked =
+                _clickThroughHotkey.Shift;
+            ClickThroughHotkeyAltCheckBox.IsChecked =
+                _clickThroughHotkey.Alt;
+            CollapseHotkeyControlCheckBox.IsChecked =
+                _collapseHotkey.Control;
+            CollapseHotkeyShiftCheckBox.IsChecked =
+                _collapseHotkey.Shift;
+            CollapseHotkeyAltCheckBox.IsChecked =
+                _collapseHotkey.Alt;
+        }
+        finally
+        {
+            _updatingHotkeyControls = false;
+        }
+
+        UpdateHotkeyKeyDisplays();
+    }
+
+    private void HotkeyKeyTextBox_PreviewMouseLeftButtonDown(
+        object sender,
+        MouseButtonEventArgs e)
+    {
+        if (sender is not TextBox textBox ||
+            !TryGetHotkeyAction(textBox, out HotkeyAction action))
+        {
+            return;
+        }
+
+        e.Handled = true;
+        BeginHotkeyCapture(action, textBox);
+    }
+
+    private void HotkeyKeyTextBox_PreviewMouseRightButtonDown(
+        object sender,
+        MouseButtonEventArgs e)
+    {
+        if (sender is not TextBox textBox ||
+            !TryGetHotkeyAction(textBox, out HotkeyAction action))
+        {
+            return;
+        }
+
+        e.Handled = true;
+        ClearHotkey(action);
+    }
+
+    private void HotkeyKeyTextBox_PreviewKeyDown(
+        object sender,
+        KeyEventArgs e)
+    {
+        if (sender is not TextBox textBox ||
+            !TryGetHotkeyAction(textBox, out HotkeyAction action) ||
+            _capturingHotkeyAction != action)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        if (e.Key == Key.Escape)
+        {
+            SetHotkeyStatus(action, string.Empty);
+            EndHotkeyCapture();
+            return;
+        }
+
+        Key key = ResolveInputKey(e);
+        int virtualKey = KeyInterop.VirtualKeyFromKey(key);
+        HotkeyGestureConfig candidate = GetHotkey(action).Clone();
+        candidate.VirtualKey = virtualKey;
+
+        HotkeyValidationError validationError = HotkeyUtilities.Validate(
+            candidate,
+            required: action == HotkeyAction.ClickThroughToggle);
+        if (validationError != HotkeyValidationError.None)
+        {
+            SetHotkeyStatus(
+                action,
+                validationError == HotkeyValidationError.ProhibitedCombination
+                    ? "このキーの組み合わせは登録できません。"
+                    : "このキーは登録できません。");
+            return;
+        }
+
+        HotkeyAction otherAction = action == HotkeyAction.ClickThroughToggle
+            ? HotkeyAction.CollapseToggle
+            : HotkeyAction.ClickThroughToggle;
+        if (HotkeyUtilities.AreEqual(candidate, GetHotkey(otherAction)))
+        {
+            SetHotkeyStatus(
+                action,
+                $"{HotkeyUtilities.GetActionDisplayName(otherAction)}で使用されています。");
+            return;
+        }
+
+        SetHotkey(action, candidate);
+        EndHotkeyCapture();
+        ValidateHotkeyCandidates(showMessages: true);
+    }
+
+    private void HotkeyKeyTextBox_LostKeyboardFocus(
+        object sender,
+        KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is FrameworkElement element &&
+            TryGetHotkeyAction(element, out HotkeyAction action) &&
+            _capturingHotkeyAction == action)
+        {
+            EndHotkeyCapture();
+        }
+    }
+
+    private static Key ResolveInputKey(KeyEventArgs e)
+    {
+        return e.Key switch
+        {
+            Key.System => e.SystemKey,
+            Key.ImeProcessed => e.ImeProcessedKey,
+            Key.DeadCharProcessed => e.DeadCharProcessedKey,
+            _ => e.Key
+        };
+    }
+
+    private void HotkeyModifierCheckBox_Changed(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (_updatingHotkeyControls ||
+            sender is not CheckBox checkBox ||
+            !TryGetHotkeyAction(checkBox, out HotkeyAction action))
+        {
+            return;
+        }
+
+        HotkeyGestureConfig hotkey = GetHotkey(action);
+        if (action == HotkeyAction.ClickThroughToggle)
+        {
+            hotkey.Control =
+                ClickThroughHotkeyControlCheckBox.IsChecked == true;
+            hotkey.Shift =
+                ClickThroughHotkeyShiftCheckBox.IsChecked == true;
+            hotkey.Alt = ClickThroughHotkeyAltCheckBox.IsChecked == true;
+        }
+        else
+        {
+            hotkey.Control = CollapseHotkeyControlCheckBox.IsChecked == true;
+            hotkey.Shift = CollapseHotkeyShiftCheckBox.IsChecked == true;
+            hotkey.Alt = CollapseHotkeyAltCheckBox.IsChecked == true;
+        }
+
+        ValidateHotkeyCandidates(showMessages: true);
+        UpdateHotkeyKeyDisplays();
+    }
+
+    private void ClearHotkeyButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement element &&
+            TryGetHotkeyAction(element, out HotkeyAction action))
+        {
+            ClearHotkey(action);
+        }
+    }
+
+    private void ClearHotkey(HotkeyAction action)
+    {
+        _capturingHotkeyAction = null;
+        UpdateHotkeyKeyDisplays();
+
+        if (action == HotkeyAction.ClickThroughToggle)
+        {
+            SetHotkeyStatus(
+                action,
+                "クリック透過切替のホットキーは必須です。");
+            return;
+        }
+
+        _collapseHotkey.VirtualKey = null;
+        EndHotkeyCapture();
+        ValidateHotkeyCandidates(showMessages: true);
+    }
+
+    private void BeginHotkeyCapture(
+        HotkeyAction action,
+        TextBox textBox)
+    {
+        _capturingHotkeyAction = action;
+        SetHotkeyStatus(action, string.Empty);
+        UpdateHotkeyKeyDisplays();
+        textBox.Focus();
+        Keyboard.Focus(textBox);
+    }
+
+    private void EndHotkeyCapture()
+    {
+        _capturingHotkeyAction = null;
+        UpdateHotkeyKeyDisplays();
+    }
+
+    private void UpdateHotkeyKeyDisplays()
+    {
+        ClickThroughHotkeyKeyTextBox.Text =
+            _capturingHotkeyAction == HotkeyAction.ClickThroughToggle
+                ? "キーを押してください"
+                : _clickThroughHotkey.VirtualKey is { } clickVirtualKey
+                    ? HotkeyUtilities.FormatKey(clickVirtualKey)
+                    : "未設定";
+        CollapseHotkeyKeyTextBox.Text =
+            _capturingHotkeyAction == HotkeyAction.CollapseToggle
+                ? "キーを押してください"
+                : _collapseHotkey.VirtualKey is { } collapseVirtualKey
+                    ? HotkeyUtilities.FormatKey(collapseVirtualKey)
+                    : "未設定";
+    }
+
+    private bool ValidateHotkeyCandidates(bool showMessages)
+    {
+        string clickThroughError = CreateValidationMessage(
+            HotkeyUtilities.Validate(
+                _clickThroughHotkey,
+                required: true),
+            requiredMessage: "クリック透過切替のホットキーは必須です。");
+        string collapseError = CreateValidationMessage(
+            HotkeyUtilities.Validate(
+                _collapseHotkey,
+                required: false),
+            requiredMessage: string.Empty);
+
+        if (string.IsNullOrEmpty(clickThroughError) &&
+            string.IsNullOrEmpty(collapseError) &&
+            HotkeyUtilities.AreEqual(
+                _clickThroughHotkey,
+                _collapseHotkey))
+        {
+            clickThroughError = "収納／展開切替で使用されています。";
+            collapseError = "クリック透過切替で使用されています。";
+        }
+
+        if (showMessages)
+        {
+            SetHotkeyStatus(
+                HotkeyAction.ClickThroughToggle,
+                clickThroughError);
+            SetHotkeyStatus(
+                HotkeyAction.CollapseToggle,
+                collapseError);
+        }
+
+        return string.IsNullOrEmpty(clickThroughError) &&
+               string.IsNullOrEmpty(collapseError);
+    }
+
+    private static string CreateValidationMessage(
+        HotkeyValidationError error,
+        string requiredMessage)
+    {
+        return error switch
+        {
+            HotkeyValidationError.None => string.Empty,
+            HotkeyValidationError.Required => requiredMessage,
+            HotkeyValidationError.ProhibitedCombination =>
+                "このキーの組み合わせは登録できません。",
+            _ => "このキーは登録できません。"
+        };
+    }
+
+    private void SetHotkeyStatus(HotkeyAction action, string message)
+    {
+        TextBlock statusText = action == HotkeyAction.ClickThroughToggle
+            ? ClickThroughHotkeyStatusText
+            : CollapseHotkeyStatusText;
+        statusText.Text = message;
+        statusText.Visibility = string.IsNullOrEmpty(message)
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+    }
+
+    private HotkeyGestureConfig GetHotkey(HotkeyAction action)
+    {
+        return action == HotkeyAction.ClickThroughToggle
+            ? _clickThroughHotkey
+            : _collapseHotkey;
+    }
+
+    private void SetHotkey(
+        HotkeyAction action,
+        HotkeyGestureConfig hotkey)
+    {
+        if (action == HotkeyAction.ClickThroughToggle)
+        {
+            _clickThroughHotkey = hotkey;
+        }
+        else
+        {
+            _collapseHotkey = hotkey;
+        }
+    }
+
+    private static bool TryGetHotkeyAction(
+        FrameworkElement element,
+        out HotkeyAction action)
+    {
+        string? actionName = element.Tag as string;
+        action = actionName switch
+        {
+            "ClickThroughToggle" => HotkeyAction.ClickThroughToggle,
+            "CollapseToggle" => HotkeyAction.CollapseToggle,
+            _ => default
+        };
+        return actionName is "ClickThroughToggle" or "CollapseToggle";
+    }
+
     private static bool IsInsideButton(DependencyObject? source)
     {
         DependencyObject? current = source;
@@ -308,6 +667,12 @@ public partial class SettingsWindow : Window
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
+        if (!ValidateHotkeyCandidates(showMessages: true))
+        {
+            NavigateToHotkeySettings();
+            return;
+        }
+
         if (!int.TryParse(
                 FontSizeTextBox.Text,
                 NumberStyles.Integer,
@@ -506,6 +871,10 @@ public partial class SettingsWindow : Window
             EnableChatFilter =
                 EnableChatFilterCheckBox.IsChecked == true,
             ChatFilterKeywords = ChatFilterKeywordsTextBox.Text.Trim(),
+            HiddenChatKeywords = HiddenChatKeywordsTextBox.Text.Trim(),
+            IncludeSenderNameInHiddenChatKeywords =
+                IncludeSenderNameInHiddenChatKeywordsCheckBox.IsChecked ==
+                true,
             WorldChatTextColor = _worldChatTextColor,
             ChannelChatTextColor = _channelChatTextColor,
             PartyChatTextColor = _partyChatTextColor,
@@ -540,6 +909,11 @@ public partial class SettingsWindow : Window
             EdgeHandleOpacity = EdgeHandleOpacitySlider.Value,
             CheckForUpdatesOnStartup =
                 CheckForUpdatesOnStartupCheckBox.IsChecked == true,
+            Hotkeys = new HotkeySettings
+            {
+                ClickThroughToggle = _clickThroughHotkey.Clone(),
+                CollapseToggle = _collapseHotkey.Clone()
+            },
             LastSuccessfulUpdateCheckUtc =
                 _currentConfig.LastSuccessfulUpdateCheckUtc,
             LastNotifiedVersion =
