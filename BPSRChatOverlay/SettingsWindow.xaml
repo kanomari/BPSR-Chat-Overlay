@@ -1504,6 +1504,11 @@
                                     <TextBlock
                                         Text="修飾キーを選び、主キー欄をクリックしてキーを入力します。"
                                         Style="{StaticResource DescriptionStyle}"/>
+                                    <TextBlock
+                                        Text="ゲーム仕様により単独キーでは反応しない場合があるため、Ctrl / Shift / Alt いずれかとの組み合わせを推奨します。"
+                                        Style="{StaticResource DescriptionStyle}"
+                                        Margin="0,4,0,0"
+                                        TextWrapping="Wrap"/>
 
                                     <Border Margin="0,14,0,0"
                                             Padding="12"
@@ -1892,16 +1897,6 @@
                                     <StackPanel Orientation="Horizontal"
                                                 Margin="0,4,0,0">
                                         <TextBlock x:Name="CurrentVersionTextBlock"/>
-                                        <Border Margin="10,0,0,0"
-                                                Padding="7,2"
-                                                Background="{DynamicResource SettingsNoticeBrush}"
-                                                BorderBrush="{DynamicResource SettingsAccentPressedBrush}"
-                                                BorderThickness="1"
-                                                CornerRadius="3">
-                                            <TextBlock Text="Beta"
-                                                       FontSize="10"
-                                                       Foreground="{DynamicResource SettingsMutedTextBrush}"/>
-                                        </Border>
                                     </StackPanel>
                                     <Button x:Name="CheckForUpdatesButton"
                                             Content="更新を確認"
