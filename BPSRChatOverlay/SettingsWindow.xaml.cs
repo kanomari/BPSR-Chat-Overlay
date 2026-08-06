@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -8,6 +9,7 @@ using System.Windows.Media;
 using System.Windows.Navigation;
 using BPSRChatOverlay.Config;
 using BPSRChatOverlay.Hotkeys;
+using BPSRChatOverlay.Managers;
 using BPSRChatOverlay.Models;
 using BPSRChatOverlay.Settings;
 using BPSRChatOverlay.UIResources;
@@ -28,6 +30,11 @@ public partial class SettingsWindow : Window
     private readonly SettingsNavigationController _settingsNavigation;
     private readonly NotificationSoundPlayer _notificationTestSoundPlayer = new();
     private readonly List<CaptureDeviceOption> _captureDeviceOptions = [];
+    private readonly ObservableCollection<BuildStatusRegistrationRow>
+        _buildStatusRegistrationRows = [];
+    private readonly List<BuildStatusRegistration>
+        _buildStatusRegistrations = [];
+    private readonly BuildStatusSnapshot _currentBuildStatus;
     private CancellationTokenSource? _updateCheckCancellation;
     private string _worldChatTextColor;
     private string _channelChatTextColor;
@@ -51,11 +58,21 @@ public partial class SettingsWindow : Window
 
     public SettingsWindow(
         AppConfig currentConfig,
-        string? activeCaptureDeviceName = null)
+        string? activeCaptureDeviceName = null,
+        BuildStatusSnapshot? currentBuildStatus = null)
     {
         InitializeComponent();
 
         _currentConfig = currentConfig;
+        _currentBuildStatus = currentBuildStatus ??
+            new BuildStatusSnapshot(
+                null,
+                null,
+                null,
+                false,
+                null,
+                null,
+                false);
         InitializeHotkeyControls(currentConfig.Hotkeys);
         _settingsNavigation = CreateSettingsNavigation();
         CurrentVersionTextBlock.Text =
@@ -184,6 +201,7 @@ public partial class SettingsWindow : Window
             currentConfig.TalkSoundFilePath ?? string.Empty;
         ShowDebugPanelCheckBox.IsChecked =
             currentConfig.ShowDebugPanel;
+        InitializeBuildStatusSettings(currentConfig);
         UpdateColorPreviews();
         CategoryListBox.SelectedIndex = 0;
     }
@@ -227,6 +245,7 @@ public partial class SettingsWindow : Window
             ColorSettingsPanel,
             ChatSettingsPanel,
             TalkSettingsPanel,
+            BuildStatusSettingsPanel,
             NetworkSettingsPanel,
             AdvancedSettingsPanel,
             AboutSettingsPanel
@@ -268,6 +287,14 @@ public partial class SettingsWindow : Window
                     ["Startup"] = SystemStartupSection,
                     ["Hotkeys"] = SystemHotkeysSection,
                     ["Debug"] = SystemDebugSection
+                }),
+            ["BuildStatus"] = new(
+                "クラス・心相晶表示",
+                [BuildStatusSettingsPanel],
+                new Dictionary<string, FrameworkElement>
+                {
+                    ["Display"] = BuildStatusDisplaySection,
+                    ["Registration"] = BuildStatusRegistrationSection
                 }),
             ["About"] = new(
                 "About",
@@ -665,6 +692,210 @@ public partial class SettingsWindow : Window
         return false;
     }
 
+    private void InitializeBuildStatusSettings(AppConfig config)
+    {
+        ShowBuildStatusWindowCheckBox.IsChecked =
+            config.ShowBuildStatusWindow;
+        EnableBuildStatusWarningsCheckBox.IsChecked =
+            config.EnableBuildStatusWarnings;
+        BuildStatusScaleSlider.Value = config.BuildStatusWindowScale;
+        BuildStatusWidthSlider.Value = config.BuildStatusWindowWidth;
+        BuildStatusBackgroundOpacitySlider.Value =
+            config.BuildStatusBackgroundOpacity;
+
+        _buildStatusRegistrations.AddRange(
+            config.BuildStatusRegistrations.Select(
+                registration => registration.Clone()));
+
+        IReadOnlyList<BuildStatusClassOption> classOptions =
+            CreateBuildStatusClassOptions();
+        BuildStatusClassComboBox.ItemsSource = classOptions;
+        BuildStatusCultivateComboBox.ItemsSource =
+            BuildStatusCaptureManager.KnownCultivateNames
+                .OrderBy(pair => pair.Key)
+                .Select(pair => new BuildStatusOption(pair.Key, pair.Value))
+                .ToList();
+        BuildStatusClassOption selectedClass =
+            classOptions.FirstOrDefault(option =>
+                _currentBuildStatus.TalentId is { } talentId &&
+                option.TalentIds.Contains(talentId))
+            ?? classOptions[0];
+        BuildStatusClassComboBox.SelectedItem = selectedClass;
+        if (_currentBuildStatus.TalentId is { } currentTalentId)
+        {
+            BuildStatusTypeComboBox.SelectedItem =
+                ((IEnumerable<BuildStatusOption>)
+                    BuildStatusTypeComboBox.ItemsSource)
+                .FirstOrDefault(option => option.Id == currentTalentId);
+        }
+
+        if (BuildStatusTypeComboBox.SelectedIndex < 0)
+        {
+            BuildStatusTypeComboBox.SelectedIndex = 0;
+        }
+
+        BuildStatusCultivateComboBox.SelectedIndex = 0;
+
+        string typeText = _currentBuildStatus.IsTypeUnselected
+            ? "型未選択"
+            : _currentBuildStatus.TypeName ?? "読取中";
+        string cultivateText = _currentBuildStatus.IsCultivateDisabled
+            ? "無効"
+            : _currentBuildStatus.CultivateName ?? "読取中";
+        CurrentBuildStatusTextBlock.Text =
+            $"{typeText} ｜ {cultivateText}";
+        RegisterCurrentBuildStatusButton.IsEnabled =
+            _currentBuildStatus.TalentId.HasValue &&
+            _currentBuildStatus.CultivateAreaId.HasValue;
+
+        BuildStatusRegistrationsItemsControl.ItemsSource =
+            _buildStatusRegistrationRows;
+        RefreshBuildStatusRegistrationRows();
+    }
+
+    private void BuildStatusClassComboBox_SelectionChanged(
+        object sender,
+        SelectionChangedEventArgs e)
+    {
+        if (BuildStatusClassComboBox.SelectedItem is not
+                BuildStatusClassOption selectedClass)
+        {
+            BuildStatusTypeComboBox.ItemsSource = null;
+            return;
+        }
+
+        BuildStatusTypeComboBox.ItemsSource = selectedClass.TalentIds
+            .Where(BuildStatusCaptureManager.KnownTypeNames.ContainsKey)
+            .Select(talentId => new BuildStatusOption(
+                talentId,
+                BuildStatusCaptureManager.KnownTypeNames[talentId]))
+            .ToList();
+        BuildStatusTypeComboBox.SelectedIndex = 0;
+    }
+
+    private static IReadOnlyList<BuildStatusClassOption>
+        CreateBuildStatusClassOptions()
+    {
+        return
+        [
+            new("ストームブレイド", [101, 102]),
+            new("フロストメイジ", [104, 105]),
+            new("ディバインアーチャー", [116, 117]),
+            new("ヴァーダントオラクル", [110, 111]),
+            new("ヘヴィガーディアン", [113, 114]),
+            new("ビートパフォーマー", [119, 120]),
+            new("ゲイルランサー", [107, 108]),
+            new("ツインストライカー", [124, 125]),
+            new("シールドナイト", [122, 123])
+        ];
+    }
+
+    private void RegisterCurrentBuildStatusButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (_currentBuildStatus.TalentId is not { } talentId ||
+            _currentBuildStatus.CultivateAreaId is not { } cultivateAreaId)
+        {
+            return;
+        }
+
+        AddBuildStatusRegistration(talentId, cultivateAreaId);
+    }
+
+    private void AddBuildStatusRegistrationButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (BuildStatusTypeComboBox.SelectedItem is not
+                BuildStatusOption type ||
+            BuildStatusCultivateComboBox.SelectedItem is not
+                BuildStatusOption cultivate)
+        {
+            return;
+        }
+
+        AddBuildStatusRegistration(type.Id, cultivate.Id);
+    }
+
+    private void AddBuildStatusRegistration(
+        int talentId,
+        int cultivateAreaId)
+    {
+        if (_buildStatusRegistrations.Any(registration =>
+                registration.TalentId == talentId &&
+                registration.CultivateAreaId == cultivateAreaId))
+        {
+            return;
+        }
+
+        _buildStatusRegistrations.Add(new BuildStatusRegistration
+        {
+            TalentId = talentId,
+            CultivateAreaId = cultivateAreaId
+        });
+        RefreshBuildStatusRegistrationRows();
+    }
+
+    private void DeleteBuildStatusRegistrationButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (sender is not Button
+            {
+                Tag: BuildStatusRegistrationRow row
+            })
+        {
+            return;
+        }
+
+        _buildStatusRegistrations.RemoveAll(registration =>
+            registration.TalentId == row.TalentId &&
+            registration.CultivateAreaId == row.CultivateAreaId);
+        RefreshBuildStatusRegistrationRows();
+    }
+
+    private void RefreshBuildStatusRegistrationRows()
+    {
+        _buildStatusRegistrationRows.Clear();
+
+        foreach (BuildStatusRegistration registration in
+                 _buildStatusRegistrations
+                     .OrderBy(registration =>
+                         BuildStatusCaptureManager.KnownTypeNames.TryGetValue(
+                             registration.TalentId,
+                             out string? typeName)
+                             ? typeName
+                             : string.Empty,
+                         StringComparer.CurrentCulture)
+                     .ThenBy(registration => registration.CultivateAreaId))
+        {
+            string typeName =
+                BuildStatusCaptureManager.KnownTypeNames.TryGetValue(
+                    registration.TalentId,
+                    out string? knownTypeName)
+                    ? knownTypeName
+                    : $"型{registration.TalentId}";
+            string cultivateName =
+                BuildStatusCaptureManager.KnownCultivateNames.TryGetValue(
+                    registration.CultivateAreaId,
+                    out string? knownCultivateName)
+                    ? knownCultivateName
+                    : $"心相晶{registration.CultivateAreaId}";
+
+            _buildStatusRegistrationRows.Add(
+                new BuildStatusRegistrationRow(
+                    registration.TalentId,
+                    registration.CultivateAreaId,
+                    $"{typeName} ｜ {cultivateName}"));
+        }
+
+        NoBuildStatusRegistrationsTextBlock.Visibility =
+            _buildStatusRegistrationRows.Count == 0
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+    }
+
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
         if (!ValidateHotkeyCandidates(showMessages: true))
@@ -862,6 +1093,19 @@ public partial class SettingsWindow : Window
             WindowTop = _currentConfig.WindowTop,
             WindowWidth = _currentConfig.WindowWidth,
             WindowHeight = _currentConfig.WindowHeight,
+            BuildStatusWindowLeft = _currentConfig.BuildStatusWindowLeft,
+            BuildStatusWindowTop = _currentConfig.BuildStatusWindowTop,
+            ShowBuildStatusWindow =
+                ShowBuildStatusWindowCheckBox.IsChecked == true,
+            EnableBuildStatusWarnings =
+                EnableBuildStatusWarningsCheckBox.IsChecked == true,
+            BuildStatusWindowScale = BuildStatusScaleSlider.Value,
+            BuildStatusWindowWidth = BuildStatusWidthSlider.Value,
+            BuildStatusBackgroundOpacity =
+                BuildStatusBackgroundOpacitySlider.Value,
+            BuildStatusRegistrations = _buildStatusRegistrations
+                .Select(registration => registration.Clone())
+                .ToList(),
             ShowWorldChat = ShowWorldChatCheckBox.IsChecked == true,
             ShowChannelChat = ShowChannelChatCheckBox.IsChecked == true,
             ShowPartyChat = ShowPartyChatCheckBox.IsChecked == true,
@@ -1571,4 +1815,27 @@ public partial class SettingsWindow : Window
         _notificationTestSoundPlayer.Dispose();
         base.OnClosed(e);
     }
+
+    private sealed record BuildStatusOption(int Id, string Name)
+    {
+        public override string ToString()
+        {
+            return Name;
+        }
+    }
+
+    private sealed record BuildStatusClassOption(
+        string Name,
+        IReadOnlyList<int> TalentIds)
+    {
+        public override string ToString()
+        {
+            return Name;
+        }
+    }
+
+    private sealed record BuildStatusRegistrationRow(
+        int TalentId,
+        int CultivateAreaId,
+        string DisplayText);
 }

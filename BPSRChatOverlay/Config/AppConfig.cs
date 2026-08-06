@@ -18,6 +18,10 @@ public sealed class AppConfig
     public const double MinEdgeHandleThickness = 8.0;
     public const double MaxEdgeHandleThickness = 32.0;
     public const double DefaultEdgeHandleOpacity = 0.25;
+    public const double MinBuildStatusWindowScale = 0.7;
+    public const double MaxBuildStatusWindowScale = 1.5;
+    public const double MinBuildStatusWindowWidth = 180.0;
+    public const double MaxBuildStatusWindowWidth = 400.0;
 
     public string? CaptureDeviceName { get; set; }
 
@@ -82,6 +86,23 @@ public sealed class AppConfig
     public double WindowWidth { get; set; } = 800;
 
     public double WindowHeight { get; set; } = 600;
+
+    public double? BuildStatusWindowLeft { get; set; }
+
+    public double? BuildStatusWindowTop { get; set; }
+
+    public bool ShowBuildStatusWindow { get; set; } = true;
+
+    public bool EnableBuildStatusWarnings { get; set; } = true;
+
+    public double BuildStatusWindowScale { get; set; } = 1.0;
+
+    public double BuildStatusWindowWidth { get; set; } = 260.0;
+
+    public double BuildStatusBackgroundOpacity { get; set; } = 0.85;
+
+    public List<BuildStatusRegistration> BuildStatusRegistrations { get; set; } =
+        [];
 
     public bool ShowWorldChat { get; set; } = true;
 

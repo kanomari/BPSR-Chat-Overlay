@@ -4,9 +4,9 @@
         xmlns:config="clr-namespace:BPSRChatOverlay.Config"
         Title="BPSR Chat Overlay - 設定"
         Width="840"
-        Height="580"
+        Height="640"
         MinWidth="760"
-        MinHeight="500"
+        MinHeight="620"
         ResizeMode="CanResize"
         WindowStyle="None"
         AllowsTransparency="True"
@@ -560,8 +560,8 @@
         <Style x:Key="CategoryItemStyle" TargetType="ListBoxItem">
             <Setter Property="Foreground" Value="{DynamicResource SettingsTextBrush}"/>
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Padding" Value="16,11"/>
-            <Setter Property="Margin" Value="8,5,8,1"/>
+            <Setter Property="Padding" Value="16,2"/>
+            <Setter Property="Margin" Value="8,8,8,0"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -602,8 +602,8 @@
                TargetType="ListBoxItem"
                BasedOn="{StaticResource CategoryItemStyle}">
             <Setter Property="Foreground" Value="{DynamicResource SettingsMutedTextBrush}"/>
-            <Setter Property="Padding" Value="44,4,10,4"/>
-            <Setter Property="Margin" Value="8,0"/>
+            <Setter Property="Padding" Value="44,0,10,0"/>
+            <Setter Property="Margin" Value="8,2,8,0"/>
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="FontWeight" Value="Normal"/>
             <Setter Property="Template">
@@ -792,6 +792,15 @@
                                          Style="{StaticResource SubcategoryItemStyle}"/>
                             <ListBoxItem Content="トーク"
                                          Tag="ChatDisplay:Talk"
+                                         Style="{StaticResource SubcategoryItemStyle}"/>
+
+                            <ListBoxItem Content="クラス・心相晶表示"
+                                         Tag="BuildStatus"/>
+                            <ListBoxItem Content="表示"
+                                         Tag="BuildStatus:Display"
+                                         Style="{StaticResource SubcategoryItemStyle}"/>
+                            <ListBoxItem Content="組み合わせ登録"
+                                         Tag="BuildStatus:Registration"
                                          Style="{StaticResource SubcategoryItemStyle}"/>
 
                             <ListBoxItem Content="システム" Tag="System"/>
@@ -1427,6 +1436,194 @@
                                 </StackPanel>
                             </Border>
 
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid x:Name="BuildStatusSettingsPanel"
+                          Visibility="Collapsed"
+                          Margin="0,0,0,14">
+                        <StackPanel Margin="0,0,8,0">
+                            <Border x:Name="BuildStatusDisplaySection"
+                                    Style="{StaticResource CardStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="表示"
+                                               Style="{StaticResource GroupTitleStyle}"/>
+                                    <CheckBox x:Name="ShowBuildStatusWindowCheckBox"
+                                              Content="クラス・心相晶ウィンドウを表示する"/>
+                                    <CheckBox x:Name="EnableBuildStatusWarningsCheckBox"
+                                              Margin="0,10,0,0"
+                                              Content="型未選択・心相晶無効・登録不一致を警告する"/>
+
+                                    <Grid Margin="0,18,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="210"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <TextBlock Text="表示倍率"/>
+                                        <Grid Grid.Column="1">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="62"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Slider x:Name="BuildStatusScaleSlider"
+                                                    Minimum="0.7"
+                                                    Maximum="1.5"
+                                                    TickFrequency="0.05"
+                                                    IsSnapToTickEnabled="True"/>
+                                            <TextBlock Grid.Column="1"
+                                                       HorizontalAlignment="Right"
+                                                       Text="{Binding Value, ElementName=BuildStatusScaleSlider,
+                                                                      StringFormat={}{0:P0}}"/>
+                                        </Grid>
+
+                                        <TextBlock Grid.Row="1"
+                                                   Margin="0,16,0,0"
+                                                   Text="ウィンドウの横幅"/>
+                                        <Grid Grid.Row="1"
+                                              Grid.Column="1"
+                                              Margin="0,12,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="62"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Slider x:Name="BuildStatusWidthSlider"
+                                                    Minimum="180"
+                                                    Maximum="400"
+                                                    TickFrequency="10"
+                                                    IsSnapToTickEnabled="True"/>
+                                            <TextBlock Grid.Column="1"
+                                                       HorizontalAlignment="Right"
+                                                       Text="{Binding Value, ElementName=BuildStatusWidthSlider,
+                                                                      StringFormat={}{0:0}px}"/>
+                                        </Grid>
+
+                                        <TextBlock Grid.Row="2"
+                                                   Margin="0,16,0,0"
+                                                   Text="背景の不透明度"/>
+                                        <Grid Grid.Row="2"
+                                              Grid.Column="1"
+                                              Margin="0,12,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="62"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Slider x:Name="BuildStatusBackgroundOpacitySlider"
+                                                    Minimum="0"
+                                                    Maximum="1"
+                                                    TickFrequency="0.05"
+                                                    IsSnapToTickEnabled="True"/>
+                                            <TextBlock Grid.Column="1"
+                                                       HorizontalAlignment="Right"
+                                                       Text="{Binding Value, ElementName=BuildStatusBackgroundOpacitySlider,
+                                                                      StringFormat={}{0:0.00}}"/>
+                                        </Grid>
+                                    </Grid>
+
+                                    <TextBlock Margin="0,16,0,0"
+                                               Style="{StaticResource DescriptionStyle}"
+                                               Text="ウィンドウの端や角をドラッグしても横幅・表示倍率を変更できます。最前面表示、クリック透過、文字の太字と影は既存のチャットOverlay設定に連動します。位置は自動保存されます。"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border x:Name="BuildStatusRegistrationSection"
+                                    Style="{StaticResource CardStyle}"
+                                    Margin="0,14,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="組み合わせ登録"
+                                               Style="{StaticResource GroupTitleStyle}"/>
+
+                                    <TextBlock Text="現在検出中の組み合わせ"/>
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Padding="10,7"
+                                                Background="{DynamicResource SettingsInputBrush}"
+                                                BorderBrush="{DynamicResource SettingsBorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="4">
+                                            <TextBlock x:Name="CurrentBuildStatusTextBlock"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </Border>
+                                        <Button x:Name="RegisterCurrentBuildStatusButton"
+                                                Grid.Column="1"
+                                                Margin="10,0,0,0"
+                                                Content="現在の組み合わせを登録"
+                                                Style="{StaticResource PrimaryButtonStyle}"
+                                                Click="RegisterCurrentBuildStatusButton_Click"/>
+                                    </Grid>
+
+                                    <TextBlock Margin="0,18,0,0"
+                                               Text="組み合わせを指定して登録"/>
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox x:Name="BuildStatusClassComboBox"
+                                                  SelectionChanged="BuildStatusClassComboBox_SelectionChanged"/>
+                                        <ComboBox x:Name="BuildStatusTypeComboBox"
+                                                  Grid.Column="1"
+                                                  Margin="8,0,0,0"
+                                                  DisplayMemberPath="Name"/>
+                                        <ComboBox x:Name="BuildStatusCultivateComboBox"
+                                                  Grid.Column="2"
+                                                  Margin="8,0,0,0"
+                                                  DisplayMemberPath="Name"/>
+                                        <Button Grid.Column="3"
+                                                Margin="10,0,0,0"
+                                                Content="登録"
+                                                Click="AddBuildStatusRegistrationButton_Click"/>
+                                    </Grid>
+
+                                    <TextBlock Margin="0,18,0,8"
+                                               Text="登録済みの組み合わせ"/>
+                                    <TextBlock x:Name="NoBuildStatusRegistrationsTextBlock"
+                                               Foreground="{DynamicResource SettingsMutedTextBrush}"
+                                               Text="まだ登録されていません。登録が0件の間は組み合わせ不一致を警告しません。"/>
+                                    <ItemsControl x:Name="BuildStatusRegistrationsItemsControl">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Margin="0,0,0,6"
+                                                        Padding="10,7"
+                                                        Background="{DynamicResource SettingsInputBrush}"
+                                                        BorderBrush="{DynamicResource SettingsBorderBrush}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="4">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Text="{Binding DisplayText}"
+                                                                   TextTrimming="CharacterEllipsis"/>
+                                                        <Button Grid.Column="1"
+                                                                Margin="10,0,0,0"
+                                                                Padding="10,3"
+                                                                MinHeight="26"
+                                                                Content="削除"
+                                                                Tag="{Binding}"
+                                                                Click="DeleteBuildStatusRegistrationButton_Click"/>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <TextBlock Margin="0,10,0,0"
+                                               Style="{StaticResource DescriptionStyle}"
+                                               Text="同じ型へ複数の心相晶を登録できます。登録が1件以上ある場合、登録されていない組み合わせを警告します。"/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Grid>
 

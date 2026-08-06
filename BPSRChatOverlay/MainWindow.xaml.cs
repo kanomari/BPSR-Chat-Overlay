@@ -52,6 +52,7 @@ public partial class MainWindow : Window
         TimeSpan.FromHours(24);
 
     private readonly NetCap _netCap = new();
+    private readonly BuildStatusCaptureManager _buildStatusCaptureManager = new();
     private readonly List<ChatMessage> _chatHistory = [];
     private readonly HashSet<int> _reportedUnknownChannelTypes = [];
     private readonly NotificationSoundPlayer _notificationSoundPlayer = new();
@@ -65,6 +66,7 @@ public partial class MainWindow : Window
     private IntPtr _windowHandle;
     private HwndSource? _windowSource;
     private GlobalHotkeyManager? _globalHotkeyManager;
+    private BuildStatusWindow? _buildStatusWindow;
     private IReadOnlyList<HotkeyRegistrationResult>
         _startupHotkeyRegistrationResults = [];
     private ScrollViewer? _chatScrollViewer;
@@ -131,6 +133,7 @@ public partial class MainWindow : Window
             Log.Information("NetCap initialization completed");
 
             ChatCaptureBootstrap.Initialize(_netCap);
+            _buildStatusCaptureManager.Initialize(_netCap);
 
             _netCap.Start();
 
@@ -159,6 +162,7 @@ public partial class MainWindow : Window
     {
         ContentRendered -= MainWindow_ContentRendered;
 
+        ShowBuildStatusWindow();
         ShowStartupHotkeyRegistrationFailures();
 
         try
@@ -308,6 +312,74 @@ public partial class MainWindow : Window
 
         ApplyDisplaySettings(_appConfig);
         _windowPlacementTrackingEnabled = true;
+    }
+
+    private void ShowBuildStatusWindow()
+    {
+        BuildStatusWindow? window = null;
+
+        try
+        {
+            window = new BuildStatusWindow(
+                _buildStatusCaptureManager,
+                _appConfig,
+                RegisterBuildStatusCombination)
+            {
+                Owner = this
+            };
+            _buildStatusWindow = window;
+            window.SetDisplayed(_appConfig.ShowBuildStatusWindow);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to show the build status window");
+
+            try
+            {
+                window?.Close();
+            }
+            catch (Exception closeException)
+            {
+                Log.Error(
+                    closeException,
+                    "Failed to close the incomplete build status window");
+            }
+
+            _buildStatusWindow = null;
+        }
+    }
+
+    private bool RegisterBuildStatusCombination(
+        int talentId,
+        int cultivateAreaId)
+    {
+        if (_appConfig.BuildStatusRegistrations.Any(registration =>
+                registration.TalentId == talentId &&
+                registration.CultivateAreaId == cultivateAreaId))
+        {
+            return true;
+        }
+
+        var registration = new BuildStatusRegistration
+        {
+            TalentId = talentId,
+            CultivateAreaId = cultivateAreaId
+        };
+        _appConfig.BuildStatusRegistrations.Add(registration);
+
+        if (SaveConfigSafely(_appConfig))
+        {
+            return true;
+        }
+
+        _appConfig.BuildStatusRegistrations.Remove(registration);
+        MessageBox.Show(
+            this,
+            "組み合わせを保存できませんでした。ログを確認してください。",
+            "BPSR Chat Overlay",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+        return false;
     }
 
     private void ShowStartupHotkeyRegistrationFailures()
@@ -482,6 +554,8 @@ public partial class MainWindow : Window
         UpdateFeatureToggleButtonStates();
         UpdateCollapseButtonAppearance(config.CollapseSide);
         Topmost = config.TopMost;
+        _buildStatusWindow?.ApplySettings(config);
+        _buildStatusWindow?.SetDisplayed(config.ShowBuildStatusWindow);
 
         if (_windowHandle == IntPtr.Zero)
         {
@@ -495,7 +569,8 @@ public partial class MainWindow : Window
     {
         var settingsWindow = new SettingsWindow(
             _appConfig,
-            _netCap.CaptureDeviceSelection?.ActualDeviceName)
+            _netCap.CaptureDeviceSelection?.ActualDeviceName,
+            _buildStatusCaptureManager.Current)
         {
             Owner = this
         };
@@ -1781,6 +1856,8 @@ public partial class MainWindow : Window
             {
                 _appConfig.ClickThrough = !_appConfig.ClickThrough;
                 ApplyClickThrough(_appConfig.ClickThrough);
+                _buildStatusWindow?.ApplyClickThrough(
+                    _appConfig.ClickThrough);
                 SaveConfigSafely(_appConfig);
             }
             else if (hotkeyAction == HotkeyAction.CollapseToggle)
@@ -2525,6 +2602,10 @@ public partial class MainWindow : Window
         RunShutdownAction(
             () => ChatCaptureManager.ChatReceived -= OnChatReceived,
             "Failed to unsubscribe chat event");
+
+        RunShutdownAction(
+            () => _buildStatusWindow?.Close(),
+            "Failed to close the build status window");
 
         RunShutdownAction(
             _notificationSoundPlayer.Dispose,

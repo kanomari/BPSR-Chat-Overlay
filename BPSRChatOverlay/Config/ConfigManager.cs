@@ -354,6 +354,33 @@ public static class ConfigManager
             MinWindowHeight,
             defaults.WindowHeight,
             nameof(AppConfig.WindowHeight));
+        config.BuildStatusWindowScale = NormalizeDouble(
+            config.BuildStatusWindowScale,
+            AppConfig.MinBuildStatusWindowScale,
+            AppConfig.MaxBuildStatusWindowScale,
+            defaults.BuildStatusWindowScale,
+            nameof(AppConfig.BuildStatusWindowScale));
+        config.BuildStatusWindowWidth = NormalizeDouble(
+            config.BuildStatusWindowWidth,
+            AppConfig.MinBuildStatusWindowWidth,
+            AppConfig.MaxBuildStatusWindowWidth,
+            defaults.BuildStatusWindowWidth,
+            nameof(AppConfig.BuildStatusWindowWidth));
+        config.BuildStatusBackgroundOpacity = NormalizeOpacity(
+            config.BuildStatusBackgroundOpacity,
+            defaults.BuildStatusBackgroundOpacity,
+            nameof(AppConfig.BuildStatusBackgroundOpacity));
+
+        config.BuildStatusRegistrations =
+            (config.BuildStatusRegistrations ?? [])
+            .Where(registration =>
+                registration is not null &&
+                registration.TalentId > 0 &&
+                registration.CultivateAreaId is >= 1 and <= 8)
+            .GroupBy(registration =>
+                (registration.TalentId, registration.CultivateAreaId))
+            .Select(group => group.First())
+            .ToList();
 
         if (config.WindowLeft is { } left && !double.IsFinite(left))
         {
@@ -369,6 +396,24 @@ public static class ConfigManager
                 nameof(AppConfig.WindowTop),
                 "The window position was not finite.");
             config.WindowTop = null;
+        }
+
+        if (config.BuildStatusWindowLeft is { } buildLeft &&
+            !double.IsFinite(buildLeft))
+        {
+            LogCorrection(
+                nameof(AppConfig.BuildStatusWindowLeft),
+                "The build status window position was not finite.");
+            config.BuildStatusWindowLeft = null;
+        }
+
+        if (config.BuildStatusWindowTop is { } buildTop &&
+            !double.IsFinite(buildTop))
+        {
+            LogCorrection(
+                nameof(AppConfig.BuildStatusWindowTop),
+                "The build status window position was not finite.");
+            config.BuildStatusWindowTop = null;
         }
 
         if (config.LastSuccessfulUpdateCheckUtc is { } lastUpdateCheck)

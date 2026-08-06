@@ -12,6 +12,14 @@ using ZstdSharp;
 
 namespace BPSR_ZDPSLib;
 
+public delegate void ProxyObservationHandler(
+    ulong serviceId,
+    uint subId,
+    uint methodId,
+    uint returnUid,
+    ReadOnlySpan<byte> payload,
+    ExtraPacketData extraData);
+
 public class NetCap : IDisposable
 {
     private const int MessageHeaderSize = 6;
@@ -51,6 +59,7 @@ public class NetCap : IDisposable
     private Decompressor _decompressor = new();
     private Dictionary<NotifyId, Action<ReadOnlySpan<byte>, ExtraPacketData>> NotifyHandlers = new();
     private ConcurrentDictionary<uint, ProxyId> ProxyReturnsDictionary = new();
+    private ProxyObservationHandler? ProxyObserver;
     public ulong NumSeenPackets = 0;
     public DateTime LastPacketSeenAt = DateTime.MinValue;
     public int NumConnectionReaders = 0;
@@ -108,6 +117,11 @@ public class NetCap : IDisposable
     public void RegisterNotifyHandler(ulong serviceId, uint methodId, Action<ReadOnlySpan<byte>, ExtraPacketData> handler)
     {
         NotifyHandlers.Add(new NotifyId(serviceId, methodId), handler);
+    }
+
+    public void RegisterProxyObserver(ProxyObservationHandler observer)
+    {
+        ProxyObserver = observer ?? throw new ArgumentNullException(nameof(observer));
     }
 
     private void DeviceOnOnPacketArrival(object sender, PacketCapture e)
@@ -555,6 +569,14 @@ public class NetCap : IDisposable
 
         //Log.Logger.Information($"ParseCall: I:{proxyServiceId} S:{subId} R:{returnUid} M:{proxyMethodId} Len={data.Length} IsCompressed={isCompressed}{(loggedMsg.Length > 0 ? $"\nData: [{loggedMsg}]" : "")}");
 
+        InvokeProxyObserver(
+            proxyServiceId,
+            subId,
+            proxyMethodId,
+            returnUid,
+            msgData,
+            lastPacketTime);
+
     }
 
     private void ParseFrameUp(ReadOnlySpan<byte> data, bool isCompressed, DateTime lastPacketTime)
@@ -628,6 +650,14 @@ public class NetCap : IDisposable
 
                 //Log.Logger.Information($"ParseFrameUp: U:{uuid} L:{length} F:{flags} P0:{padding0} I:{proxyServiceId} R:{returnUid} M:{proxyMethodId} MsgDataLen={msgData.Length} Len={data.Length} IsCompressed={isCompressed}");
 
+                InvokeProxyObserver(
+                    proxyServiceId,
+                    uuid,
+                    proxyMethodId,
+                    returnUid,
+                    msgData,
+                    lastPacketTime);
+
             }
             else
             {
@@ -645,6 +675,14 @@ public class NetCap : IDisposable
                 ProxyReturnsDictionary.AddOrUpdate(returnUid, new ProxyId(proxyServiceId, proxyMethodId), (key, value) => new ProxyId(proxyServiceId, proxyMethodId));
 
                 //Log.Logger.Information($"ParseFrameUp: U:{uuid} L:{length} F:{flags} P0:{padding0} I:{proxyServiceId} P1:{padding1} R:{returnUid} M:{proxyMethodId} Len={data.Length} IsCompressed={isCompressed}");
+
+                InvokeProxyObserver(
+                    proxyServiceId,
+                    uuid,
+                    proxyMethodId,
+                    returnUid,
+                    msgData,
+                    lastPacketTime);
 
             }
 
@@ -693,6 +731,40 @@ public class NetCap : IDisposable
         //Log.Logger.Information($"ParseReturn: S:{subId} R:{returnUid} T:{thirdId} Start={protoStart} Len={data.Length} IsCompressed={isCompressed}");
 
         ProxyReturnsDictionary.TryRemove(returnUid, out _);
+    }
+
+    private void InvokeProxyObserver(
+        ulong serviceId,
+        uint subId,
+        uint methodId,
+        uint returnUid,
+        ReadOnlySpan<byte> payload,
+        DateTime lastPacketTime)
+    {
+        ProxyObservationHandler? observer = ProxyObserver;
+        if (observer is null)
+        {
+            return;
+        }
+
+        try
+        {
+            observer(
+                serviceId,
+                subId,
+                methodId,
+                returnUid,
+                payload,
+                new ExtraPacketData(lastPacketTime));
+        }
+        catch (Exception ex) when (IsRecoverableException(ex))
+        {
+            LogRateLimitedWarning(
+                ex,
+                "Proxy observer failed",
+                ref _handlerErrorLastLogTicks,
+                ref _handlerErrorSuppressedCount);
+        }
     }
 
     private ReadOnlySpan<byte> Decompress(ReadOnlySpan<byte> data)
