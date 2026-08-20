@@ -83,6 +83,7 @@ internal sealed class GlobalHotkeyManager : IDisposable
     private const uint ModNoRepeat = 0x4000;
     private const int ClickThroughPreferredId = 0x4250;
     private const int CollapsePreferredId = 0x4249;
+    private const int FieldBossAlarmPreferredId = 0x4251;
 
     private static readonly int[] RegistrationIds =
     [
@@ -119,7 +120,7 @@ internal sealed class GlobalHotkeyManager : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(settings);
 
-        var results = new List<HotkeyRegistrationResult>(2)
+        var results = new List<HotkeyRegistrationResult>(3)
         {
             RegisterInitial(
                 HotkeyAction.ClickThroughToggle,
@@ -128,7 +129,11 @@ internal sealed class GlobalHotkeyManager : IDisposable
             RegisterInitial(
                 HotkeyAction.CollapseToggle,
                 settings.CollapseToggle,
-                CollapsePreferredId)
+                CollapsePreferredId),
+            RegisterInitial(
+                HotkeyAction.FieldBossAlarmToggle,
+                settings.FieldBossAlarmToggle,
+                FieldBossAlarmPreferredId)
         };
 
         return results;
@@ -142,11 +147,12 @@ internal sealed class GlobalHotkeyManager : IDisposable
         var requested = new (HotkeyAction Action, HotkeyGestureConfig Config)[]
         {
             (HotkeyAction.ClickThroughToggle, settings.ClickThroughToggle),
-            (HotkeyAction.CollapseToggle, settings.CollapseToggle)
+            (HotkeyAction.CollapseToggle, settings.CollapseToggle),
+            (HotkeyAction.FieldBossAlarmToggle, settings.FieldBossAlarmToggle)
         };
         var desiredActions = new Dictionary<int, HotkeyAction>();
-        var createdRegistrationIds = new List<int>(2);
-        var results = new List<HotkeyRegistrationResult>(2);
+        var createdRegistrationIds = new List<int>(3);
+        var results = new List<HotkeyRegistrationResult>(3);
 
         foreach ((HotkeyAction action, HotkeyGestureConfig config) in requested)
         {

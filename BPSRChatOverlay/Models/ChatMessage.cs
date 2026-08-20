@@ -16,6 +16,8 @@ public sealed class ChatMessage : INotifyPropertyChanged
 
     public bool IsMention { get; set; }
 
+    public InAppNotificationType NotificationType { get; init; }
+
     public bool IsTalkHighlighted { get; set; }
 
     public bool IsTalkHighlightVisible
@@ -36,4 +38,10 @@ public sealed class ChatMessage : INotifyPropertyChanged
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+}
+
+public enum InAppNotificationType
+{
+    None,
+    FieldBossAlarm
 }

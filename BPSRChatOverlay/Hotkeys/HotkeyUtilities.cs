@@ -6,7 +6,8 @@ namespace BPSRChatOverlay.Hotkeys;
 internal enum HotkeyAction
 {
     ClickThroughToggle,
-    CollapseToggle
+    CollapseToggle,
+    FieldBossAlarmToggle
 }
 
 internal enum HotkeyValidationError
@@ -210,6 +211,8 @@ internal static class HotkeyUtilities
         {
             HotkeyAction.ClickThroughToggle => "クリック透過切替",
             HotkeyAction.CollapseToggle => "収納／展開切替",
+            HotkeyAction.FieldBossAlarmToggle =>
+                "フィールドボスアラーム切替",
             _ => action.ToString()
         };
     }

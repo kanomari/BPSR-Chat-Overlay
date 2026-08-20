@@ -564,6 +564,14 @@
                                 </ToggleButton>
                             </StackPanel>
 
+                            <ToggleButton
+                                x:Name="FieldBossAlarmButton"
+                                Width="28"
+                                Content="🔔"
+                                ToolTip="フィールドボスアラーム（OFF）"
+                                Style="{StaticResource ChatToggleButtonStyle}"
+                                Click="FieldBossAlarmButton_Click"/>
+
                             <Button
                                 Content="&#xE713;"
                                 FontFamily="Segoe MDL2 Assets"
@@ -678,6 +686,7 @@
                                                 <Binding Path="IsMention"/>
                                                 <Binding Path="IsTalkHighlightVisible"/>
                                                 <Binding Path="IsTalkHighlighted"/>
+                                                <Binding Path="NotificationType"/>
                                             </MultiBinding>
                                         </Border.Background>
                                         <Grid>
@@ -690,7 +699,7 @@
                                             <Border
                                                 Grid.Column="0"
                                                 IsHitTestVisible="False"
-                                                Background="{Binding ChannelType, Converter={StaticResource ChannelBrushConverter}, ConverterParameter=ChatText}"/>
+                                                Background="{Binding Converter={StaticResource ChannelBrushConverter}, ConverterParameter=ChatText}"/>
 
                                             <Grid
                                                 Grid.Column="1"
@@ -713,8 +722,8 @@
 
                                                 <TextBlock
                                                     Grid.Column="1"
-                                                    Text="{Binding ChannelType, Converter={StaticResource ChannelNameConverter}}"
-                                                    Foreground="{Binding ChannelType, Converter={StaticResource ChannelBrushConverter}}"
+                                                    Text="{Binding Converter={StaticResource ChannelNameConverter}}"
+                                                    Foreground="{Binding Converter={StaticResource ChannelBrushConverter}}"
                                                     FontSize="12"
                                                     FontWeight="Normal"
                                                     VerticalAlignment="Center"/>
@@ -722,7 +731,7 @@
                                                 <TextBlock
                                                     Grid.Column="2"
                                                     Text="{Binding SenderName}"
-                                                    Foreground="{Binding ChannelType, Converter={StaticResource ChannelBrushConverter}, ConverterParameter=ChatText}"
+                                                    Foreground="{Binding Converter={StaticResource ChannelBrushConverter}, ConverterParameter=ChatText}"
                                                     FontWeight="SemiBold"
                                                     TextTrimming="CharacterEllipsis"
                                                     TextWrapping="NoWrap"
@@ -732,7 +741,7 @@
                                                 <TextBlock
                                                     Grid.Column="3"
                                                     Text="{Binding Message}"
-                                                    Foreground="{Binding ChannelType, Converter={StaticResource ChannelBrushConverter}, ConverterParameter=ChatText}"
+                                                    Foreground="{Binding Converter={StaticResource ChannelBrushConverter}, ConverterParameter=ChatText}"
                                                     Style="{StaticResource ChatMessageTextBlockStyle}"
                                                     TextWrapping="Wrap"
                                                     VerticalAlignment="Top"/>
@@ -741,7 +750,7 @@
                                             <Border
                                                 Grid.Column="2"
                                                 IsHitTestVisible="False"
-                                                Background="{Binding ChannelType, Converter={StaticResource ChannelBrushConverter}, ConverterParameter=ChatText}"/>
+                                                Background="{Binding Converter={StaticResource ChannelBrushConverter}, ConverterParameter=ChatText}"/>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>

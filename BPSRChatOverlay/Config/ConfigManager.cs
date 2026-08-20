@@ -344,6 +344,14 @@ public static class ConfigManager
             config.EdgeHandleOpacity,
             defaults.EdgeHandleOpacity,
             nameof(AppConfig.EdgeHandleOpacity));
+        if (config.FieldBossAlarmAdvanceMinutes is not (0 or 3 or 5 or 10))
+        {
+            LogCorrection(
+                nameof(AppConfig.FieldBossAlarmAdvanceMinutes),
+                "The value was not a supported advance notification time.");
+            config.FieldBossAlarmAdvanceMinutes =
+                defaults.FieldBossAlarmAdvanceMinutes;
+        }
         config.WindowWidth = NormalizeWindowDimension(
             config.WindowWidth,
             MinWindowWidth,
@@ -498,10 +506,23 @@ public static class ConfigManager
                 HotkeyGestureConfig.CreateDefaultCollapse();
         }
 
+        if (config.Hotkeys.FieldBossAlarmToggle is null ||
+            HotkeyUtilities.Validate(
+                config.Hotkeys.FieldBossAlarmToggle,
+                required: false) != HotkeyValidationError.None)
+        {
+            LogCorrection(
+                $"{nameof(AppConfig.Hotkeys)}.{nameof(HotkeySettings.FieldBossAlarmToggle)}",
+                "The field boss alarm hotkey was invalid.");
+            config.Hotkeys.FieldBossAlarmToggle =
+                HotkeyGestureConfig.CreateUnset();
+        }
+
         if (!HotkeyUtilities.AreEqual(
                 config.Hotkeys.ClickThroughToggle,
                 config.Hotkeys.CollapseToggle))
         {
+            RemoveDuplicateFieldBossAlarmHotkey(config);
             return;
         }
 
@@ -515,6 +536,27 @@ public static class ConfigManager
             defaultCollapse)
             ? HotkeyGestureConfig.CreateUnset()
             : defaultCollapse;
+
+        RemoveDuplicateFieldBossAlarmHotkey(config);
+    }
+
+    private static void RemoveDuplicateFieldBossAlarmHotkey(AppConfig config)
+    {
+        if (!HotkeyUtilities.AreEqual(
+                config.Hotkeys.FieldBossAlarmToggle,
+                config.Hotkeys.ClickThroughToggle) &&
+            !HotkeyUtilities.AreEqual(
+                config.Hotkeys.FieldBossAlarmToggle,
+                config.Hotkeys.CollapseToggle))
+        {
+            return;
+        }
+
+        LogCorrection(
+            nameof(AppConfig.Hotkeys),
+            "The field boss alarm hotkey duplicated another action.");
+        config.Hotkeys.FieldBossAlarmToggle =
+            HotkeyGestureConfig.CreateUnset();
     }
 
     private static int NormalizeInt(
@@ -654,6 +696,14 @@ public static class ConfigManager
             config.TalkHighlightBackgroundColor,
             defaults.TalkHighlightBackgroundColor,
             nameof(AppConfig.TalkHighlightBackgroundColor));
+        config.FieldBossAlarmTextColor = NormalizeString(
+            config.FieldBossAlarmTextColor,
+            defaults.FieldBossAlarmTextColor,
+            nameof(AppConfig.FieldBossAlarmTextColor));
+        config.FieldBossAlarmHighlightColor = NormalizeString(
+            config.FieldBossAlarmHighlightColor,
+            defaults.FieldBossAlarmHighlightColor,
+            nameof(AppConfig.FieldBossAlarmHighlightColor));
         config.MentionSoundFilePath = NormalizeString(
             config.MentionSoundFilePath,
             defaults.MentionSoundFilePath,
@@ -662,6 +712,10 @@ public static class ConfigManager
             config.TalkSoundFilePath,
             defaults.TalkSoundFilePath,
             nameof(AppConfig.TalkSoundFilePath));
+        config.FieldBossAlarmSoundFilePath = NormalizeString(
+            config.FieldBossAlarmSoundFilePath,
+            defaults.FieldBossAlarmSoundFilePath,
+            nameof(AppConfig.FieldBossAlarmSoundFilePath));
         config.LastNotifiedVersion = NormalizeString(
             config.LastNotifiedVersion,
             defaults.LastNotifiedVersion,

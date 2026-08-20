@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Windows.Data;
+using BPSRChatOverlay.Models;
 
 namespace BPSRChatOverlay.Converters;
 
@@ -11,7 +12,20 @@ public sealed class ChannelNameConverter : IValueConverter
         object parameter,
         CultureInfo culture)
     {
-        if (value is not int channelType)
+        if (value is ChatMessage message &&
+            message.NotificationType != InAppNotificationType.None)
+        {
+            return "通知";
+        }
+
+        int? resolvedChannelType = value switch
+        {
+            int channel => channel,
+            ChatMessage chatMessage => chatMessage.ChannelType,
+            _ => null
+        };
+
+        if (resolvedChannelType is not { } channelType)
         {
             return "不明";
         }

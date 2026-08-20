@@ -47,10 +47,14 @@ public partial class SettingsWindow : Window
     private string _mentionHighlightColor;
     private string _chatTextShadowColor;
     private string _talkHighlightBackgroundColor;
+    private string _fieldBossAlarmTextColor;
+    private string _fieldBossAlarmHighlightColor;
     private HotkeyGestureConfig _clickThroughHotkey =
         HotkeyGestureConfig.CreateDefaultClickThrough();
     private HotkeyGestureConfig _collapseHotkey =
         HotkeyGestureConfig.CreateDefaultCollapse();
+    private HotkeyGestureConfig _fieldBossAlarmHotkey =
+        HotkeyGestureConfig.CreateUnset();
     private HotkeyAction? _capturingHotkeyAction;
     private bool _updatingHotkeyControls;
 
@@ -116,6 +120,12 @@ public partial class SettingsWindow : Window
         _talkHighlightBackgroundColor = NormalizeColorText(
             currentConfig.TalkHighlightBackgroundColor,
             ChatColors.DefaultTalkHighlightColor);
+        _fieldBossAlarmTextColor = NormalizeColorText(
+            currentConfig.FieldBossAlarmTextColor,
+            ChatColors.DefaultFieldBossAlarmTextColor);
+        _fieldBossAlarmHighlightColor = NormalizeColorText(
+            currentConfig.FieldBossAlarmHighlightColor,
+            ChatColors.DefaultFieldBossAlarmHighlightColor);
 
         FontSizeTextBox.Text =
             currentConfig.FontSize.ToString(CultureInfo.CurrentCulture);
@@ -146,6 +156,8 @@ public partial class SettingsWindow : Window
             currentConfig.ShowChatFilterToggle;
         ShowMentionHighlightToggleCheckBox.IsChecked =
             currentConfig.ShowMentionHighlightToggle;
+        ShowFieldBossAlarmButtonCheckBox.IsChecked =
+            currentConfig.ShowFieldBossAlarmButton;
         ShowCollapseButtonCheckBox.IsChecked =
             currentConfig.ShowCollapseButton;
         ShowChatSeparatorsCheckBox.IsChecked =
@@ -199,6 +211,18 @@ public partial class SettingsWindow : Window
             currentConfig.EnableTalkSound;
         TalkSoundFilePathTextBox.Text =
             currentConfig.TalkSoundFilePath ?? string.Empty;
+        EnableFieldBossAlarmSoundCheckBox.IsChecked =
+            currentConfig.EnableFieldBossAlarmSound;
+        FieldBossAlarmSoundFilePathTextBox.Text =
+            currentConfig.FieldBossAlarmSoundFilePath ?? string.Empty;
+        FieldBossAlarmAdvanceComboBox.SelectedIndex =
+            currentConfig.FieldBossAlarmAdvanceMinutes switch
+            {
+                10 => 0,
+                3 => 2,
+                0 => 3,
+                _ => 1
+            };
         ShowDebugPanelCheckBox.IsChecked =
             currentConfig.ShowDebugPanel;
         InitializeBuildStatusSettings(currentConfig);
@@ -244,6 +268,7 @@ public partial class SettingsWindow : Window
             AppearanceActionsPanel,
             ColorSettingsPanel,
             ChatSettingsPanel,
+            ChatNotificationSettingsPanel,
             TalkSettingsPanel,
             BuildStatusSettingsPanel,
             NetworkSettingsPanel,
@@ -277,6 +302,13 @@ public partial class SettingsWindow : Window
                     ["Filter"] = ChatFilterSection,
                     ["Highlight"] = ChatHighlightSection,
                     ["Talk"] = ChatTalkSection
+                }),
+            ["ChatNotification"] = new(
+                "チャット通知",
+                [ChatNotificationSettingsPanel],
+                new Dictionary<string, FrameworkElement>
+                {
+                    ["Alarm"] = FieldBossAlarmSection
                 }),
             ["System"] = new(
                 "システム",
@@ -356,6 +388,9 @@ public partial class SettingsWindow : Window
         _collapseHotkey =
             effectiveSettings.CollapseToggle?.Clone() ??
             HotkeyGestureConfig.CreateDefaultCollapse();
+        _fieldBossAlarmHotkey =
+            effectiveSettings.FieldBossAlarmToggle?.Clone() ??
+            HotkeyGestureConfig.CreateUnset();
 
         _updatingHotkeyControls = true;
         try
@@ -372,6 +407,12 @@ public partial class SettingsWindow : Window
                 _collapseHotkey.Shift;
             CollapseHotkeyAltCheckBox.IsChecked =
                 _collapseHotkey.Alt;
+            FieldBossAlarmHotkeyControlCheckBox.IsChecked =
+                _fieldBossAlarmHotkey.Control;
+            FieldBossAlarmHotkeyShiftCheckBox.IsChecked =
+                _fieldBossAlarmHotkey.Shift;
+            FieldBossAlarmHotkeyAltCheckBox.IsChecked =
+                _fieldBossAlarmHotkey.Alt;
         }
         finally
         {
@@ -446,14 +487,17 @@ public partial class SettingsWindow : Window
             return;
         }
 
-        HotkeyAction otherAction = action == HotkeyAction.ClickThroughToggle
-            ? HotkeyAction.CollapseToggle
-            : HotkeyAction.ClickThroughToggle;
-        if (HotkeyUtilities.AreEqual(candidate, GetHotkey(otherAction)))
+        HotkeyAction? otherAction = Enum.GetValues<HotkeyAction>()
+            .Where(other =>
+                other != action &&
+                HotkeyUtilities.AreEqual(candidate, GetHotkey(other)))
+            .Cast<HotkeyAction?>()
+            .FirstOrDefault();
+        if (otherAction is { } duplicateAction)
         {
             SetHotkeyStatus(
                 action,
-                $"{HotkeyUtilities.GetActionDisplayName(otherAction)}で使用されています。");
+                $"{HotkeyUtilities.GetActionDisplayName(duplicateAction)}で使用されています。");
             return;
         }
 
@@ -505,11 +549,20 @@ public partial class SettingsWindow : Window
                 ClickThroughHotkeyShiftCheckBox.IsChecked == true;
             hotkey.Alt = ClickThroughHotkeyAltCheckBox.IsChecked == true;
         }
-        else
+        else if (action == HotkeyAction.CollapseToggle)
         {
             hotkey.Control = CollapseHotkeyControlCheckBox.IsChecked == true;
             hotkey.Shift = CollapseHotkeyShiftCheckBox.IsChecked == true;
             hotkey.Alt = CollapseHotkeyAltCheckBox.IsChecked == true;
+        }
+        else
+        {
+            hotkey.Control =
+                FieldBossAlarmHotkeyControlCheckBox.IsChecked == true;
+            hotkey.Shift =
+                FieldBossAlarmHotkeyShiftCheckBox.IsChecked == true;
+            hotkey.Alt =
+                FieldBossAlarmHotkeyAltCheckBox.IsChecked == true;
         }
 
         ValidateHotkeyCandidates(showMessages: true);
@@ -540,7 +593,7 @@ public partial class SettingsWindow : Window
             return;
         }
 
-        _collapseHotkey.VirtualKey = null;
+        GetHotkey(action).VirtualKey = null;
         EndHotkeyCapture();
         ValidateHotkeyCandidates(showMessages: true);
     }
@@ -576,6 +629,12 @@ public partial class SettingsWindow : Window
                 : _collapseHotkey.VirtualKey is { } collapseVirtualKey
                     ? HotkeyUtilities.FormatKey(collapseVirtualKey)
                     : "未設定";
+        FieldBossAlarmHotkeyKeyTextBox.Text =
+            _capturingHotkeyAction == HotkeyAction.FieldBossAlarmToggle
+                ? "キーを押してください"
+                : _fieldBossAlarmHotkey.VirtualKey is { } alarmVirtualKey
+                    ? HotkeyUtilities.FormatKey(alarmVirtualKey)
+                    : "未設定";
     }
 
     private bool ValidateHotkeyCandidates(bool showMessages)
@@ -590,15 +649,20 @@ public partial class SettingsWindow : Window
                 _collapseHotkey,
                 required: false),
             requiredMessage: string.Empty);
+        string alarmError = CreateValidationMessage(
+            HotkeyUtilities.Validate(
+                _fieldBossAlarmHotkey,
+                required: false),
+            requiredMessage: string.Empty);
 
         if (string.IsNullOrEmpty(clickThroughError) &&
             string.IsNullOrEmpty(collapseError) &&
-            HotkeyUtilities.AreEqual(
-                _clickThroughHotkey,
-                _collapseHotkey))
+            string.IsNullOrEmpty(alarmError))
         {
-            clickThroughError = "収納／展開切替で使用されています。";
-            collapseError = "クリック透過切替で使用されています。";
+            MarkDuplicateHotkeys(
+                ref clickThroughError,
+                ref collapseError,
+                ref alarmError);
         }
 
         if (showMessages)
@@ -609,10 +673,14 @@ public partial class SettingsWindow : Window
             SetHotkeyStatus(
                 HotkeyAction.CollapseToggle,
                 collapseError);
+            SetHotkeyStatus(
+                HotkeyAction.FieldBossAlarmToggle,
+                alarmError);
         }
 
         return string.IsNullOrEmpty(clickThroughError) &&
-               string.IsNullOrEmpty(collapseError);
+               string.IsNullOrEmpty(collapseError) &&
+               string.IsNullOrEmpty(alarmError);
     }
 
     private static string CreateValidationMessage(
@@ -629,11 +697,54 @@ public partial class SettingsWindow : Window
         };
     }
 
+    private void MarkDuplicateHotkeys(
+        ref string clickThroughError,
+        ref string collapseError,
+        ref string alarmError)
+    {
+        var errors = new Dictionary<HotkeyAction, string>
+        {
+            [HotkeyAction.ClickThroughToggle] = clickThroughError,
+            [HotkeyAction.CollapseToggle] = collapseError,
+            [HotkeyAction.FieldBossAlarmToggle] = alarmError
+        };
+        HotkeyAction[] actions = Enum.GetValues<HotkeyAction>();
+
+        for (int firstIndex = 0; firstIndex < actions.Length; firstIndex++)
+        {
+            for (int secondIndex = firstIndex + 1;
+                 secondIndex < actions.Length;
+                 secondIndex++)
+            {
+                HotkeyAction first = actions[firstIndex];
+                HotkeyAction second = actions[secondIndex];
+                if (!HotkeyUtilities.AreEqual(
+                        GetHotkey(first),
+                        GetHotkey(second)))
+                {
+                    continue;
+                }
+
+                errors[first] =
+                    $"{HotkeyUtilities.GetActionDisplayName(second)}で使用されています。";
+                errors[second] =
+                    $"{HotkeyUtilities.GetActionDisplayName(first)}で使用されています。";
+            }
+        }
+
+        clickThroughError = errors[HotkeyAction.ClickThroughToggle];
+        collapseError = errors[HotkeyAction.CollapseToggle];
+        alarmError = errors[HotkeyAction.FieldBossAlarmToggle];
+    }
+
     private void SetHotkeyStatus(HotkeyAction action, string message)
     {
-        TextBlock statusText = action == HotkeyAction.ClickThroughToggle
-            ? ClickThroughHotkeyStatusText
-            : CollapseHotkeyStatusText;
+        TextBlock statusText = action switch
+        {
+            HotkeyAction.ClickThroughToggle => ClickThroughHotkeyStatusText,
+            HotkeyAction.CollapseToggle => CollapseHotkeyStatusText,
+            _ => FieldBossAlarmHotkeyStatusText
+        };
         statusText.Text = message;
         statusText.Visibility = string.IsNullOrEmpty(message)
             ? Visibility.Collapsed
@@ -642,9 +753,12 @@ public partial class SettingsWindow : Window
 
     private HotkeyGestureConfig GetHotkey(HotkeyAction action)
     {
-        return action == HotkeyAction.ClickThroughToggle
-            ? _clickThroughHotkey
-            : _collapseHotkey;
+        return action switch
+        {
+            HotkeyAction.ClickThroughToggle => _clickThroughHotkey,
+            HotkeyAction.CollapseToggle => _collapseHotkey,
+            _ => _fieldBossAlarmHotkey
+        };
     }
 
     private void SetHotkey(
@@ -655,9 +769,13 @@ public partial class SettingsWindow : Window
         {
             _clickThroughHotkey = hotkey;
         }
-        else
+        else if (action == HotkeyAction.CollapseToggle)
         {
             _collapseHotkey = hotkey;
+        }
+        else
+        {
+            _fieldBossAlarmHotkey = hotkey;
         }
     }
 
@@ -670,9 +788,12 @@ public partial class SettingsWindow : Window
         {
             "ClickThroughToggle" => HotkeyAction.ClickThroughToggle,
             "CollapseToggle" => HotkeyAction.CollapseToggle,
+            "FieldBossAlarmToggle" => HotkeyAction.FieldBossAlarmToggle,
             _ => default
         };
-        return actionName is "ClickThroughToggle" or "CollapseToggle";
+        return actionName is "ClickThroughToggle" or
+            "CollapseToggle" or
+            "FieldBossAlarmToggle";
     }
 
     private static bool IsInsideButton(DependencyObject? source)
@@ -1077,6 +1198,8 @@ public partial class SettingsWindow : Window
                 ShowChatFilterToggleCheckBox.IsChecked == true,
             ShowMentionHighlightToggle =
                 ShowMentionHighlightToggleCheckBox.IsChecked == true,
+            ShowFieldBossAlarmButton =
+                ShowFieldBossAlarmButtonCheckBox.IsChecked == true,
             ShowCollapseButton =
                 ShowCollapseButtonCheckBox.IsChecked == true,
             ShowChatSeparators =
@@ -1143,6 +1266,19 @@ public partial class SettingsWindow : Window
                 EnableTalkSoundCheckBox.IsChecked == true,
             TalkSoundFilePath =
                 TalkSoundFilePathTextBox.Text.Trim(),
+            FieldBossAlarmTextColor = _fieldBossAlarmTextColor,
+            FieldBossAlarmHighlightColor = _fieldBossAlarmHighlightColor,
+            EnableFieldBossAlarmSound =
+                EnableFieldBossAlarmSoundCheckBox.IsChecked == true,
+            FieldBossAlarmSoundFilePath =
+                FieldBossAlarmSoundFilePathTextBox.Text.Trim(),
+            FieldBossAlarmAdvanceMinutes =
+                int.TryParse(
+                    (FieldBossAlarmAdvanceComboBox.SelectedItem as ComboBoxItem)
+                        ?.Tag as string,
+                    out int alarmAdvanceMinutes)
+                    ? alarmAdvanceMinutes
+                    : 5,
             ShowDebugPanel = ShowDebugPanelCheckBox.IsChecked == true,
             TopMost = TopMostCheckBox.IsChecked == true,
             CollapseSide =
@@ -1156,7 +1292,8 @@ public partial class SettingsWindow : Window
             Hotkeys = new HotkeySettings
             {
                 ClickThroughToggle = _clickThroughHotkey.Clone(),
-                CollapseToggle = _collapseHotkey.Clone()
+                CollapseToggle = _collapseHotkey.Clone(),
+                FieldBossAlarmToggle = _fieldBossAlarmHotkey.Clone()
             },
             LastSuccessfulUpdateCheckUtc =
                 _currentConfig.LastSuccessfulUpdateCheckUtc,
@@ -1613,7 +1750,8 @@ public partial class SettingsWindow : Window
         System.Drawing.Color selectedColor = dialog.Color;
         byte alpha = settingName is
             nameof(AppConfig.MentionHighlightColor) or
-            nameof(AppConfig.TalkHighlightBackgroundColor)
+            nameof(AppConfig.TalkHighlightBackgroundColor) or
+            nameof(AppConfig.FieldBossAlarmHighlightColor)
             ? wpfColor.A
             : byte.MaxValue;
         string colorText =
@@ -1641,6 +1779,10 @@ public partial class SettingsWindow : Window
                 _chatTextShadowColor,
             nameof(AppConfig.TalkHighlightBackgroundColor) =>
                 _talkHighlightBackgroundColor,
+            nameof(AppConfig.FieldBossAlarmTextColor) =>
+                _fieldBossAlarmTextColor,
+            nameof(AppConfig.FieldBossAlarmHighlightColor) =>
+                _fieldBossAlarmHighlightColor,
             _ => ChatColors.DefaultChatTextColor
         };
     }
@@ -1682,6 +1824,12 @@ public partial class SettingsWindow : Window
             case nameof(AppConfig.TalkHighlightBackgroundColor):
                 _talkHighlightBackgroundColor = colorText;
                 break;
+            case nameof(AppConfig.FieldBossAlarmTextColor):
+                _fieldBossAlarmTextColor = colorText;
+                break;
+            case nameof(AppConfig.FieldBossAlarmHighlightColor):
+                _fieldBossAlarmHighlightColor = colorText;
+                break;
         }
     }
 
@@ -1710,6 +1858,18 @@ public partial class SettingsWindow : Window
         SetPreviewColor(
             AppearanceTalkHighlightBackgroundColorPreview,
             _talkHighlightBackgroundColor);
+        SetPreviewColor(
+            FieldBossAlarmTextColorPreview,
+            _fieldBossAlarmTextColor);
+        SetPreviewColor(
+            AppearanceFieldBossAlarmTextColorPreview,
+            _fieldBossAlarmTextColor);
+        SetPreviewColor(
+            FieldBossAlarmHighlightColorPreview,
+            _fieldBossAlarmHighlightColor);
+        SetPreviewColor(
+            AppearanceFieldBossAlarmHighlightColorPreview,
+            _fieldBossAlarmHighlightColor);
     }
 
     private static void SetPreviewColor(Border preview, string colorText)
@@ -1807,6 +1967,34 @@ public partial class SettingsWindow : Window
     {
         _notificationTestSoundPlayer.Play(
             TalkSoundFilePathTextBox.Text);
+    }
+
+    private void BrowseFieldBossAlarmSoundButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        var dialog = CreateSoundFileDialog();
+
+        if (dialog.ShowDialog(this) == true)
+        {
+            FieldBossAlarmSoundFilePathTextBox.Text =
+                Path.GetFullPath(dialog.FileName);
+        }
+    }
+
+    private void ClearFieldBossAlarmSoundButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        FieldBossAlarmSoundFilePathTextBox.Text = string.Empty;
+    }
+
+    private void TestFieldBossAlarmSoundButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        _notificationTestSoundPlayer.Play(
+            FieldBossAlarmSoundFilePathTextBox.Text);
     }
 
     protected override void OnClosed(EventArgs e)

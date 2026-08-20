@@ -794,6 +794,11 @@
                                          Tag="ChatDisplay:Talk"
                                          Style="{StaticResource SubcategoryItemStyle}"/>
 
+                            <ListBoxItem Content="チャット通知" Tag="ChatNotification"/>
+                            <ListBoxItem Content="アラーム"
+                                         Tag="ChatNotification:Alarm"
+                                         Style="{StaticResource SubcategoryItemStyle}"/>
+
                             <ListBoxItem Content="クラス・心相晶表示"
                                          Tag="BuildStatus"/>
                             <ListBoxItem Content="表示"
@@ -1145,6 +1150,8 @@
                                               Content="Overlayにフィルターボタンを表示する"/>
                                     <CheckBox x:Name="ShowMentionHighlightToggleCheckBox"
                                               Content="Overlayにハイライトボタンを表示する"/>
+                                    <CheckBox x:Name="ShowFieldBossAlarmButtonCheckBox"
+                                              Content="Overlayにフィールドボスアラームボタンを表示する"/>
                                     <CheckBox x:Name="ShowCollapseButtonCheckBox"
                                               Content="Overlayに収納ボタンを表示する"/>
                                 </StackPanel>
@@ -1325,6 +1332,7 @@
                                             <RowDefinition Height="44"/>
                                             <RowDefinition Height="44"/>
                                             <RowDefinition Height="44"/>
+                                            <RowDefinition Height="44"/>
                                         </Grid.RowDefinitions>
                                         <TextBlock Text="ワールド"/>
                                         <Border x:Name="WorldChatTextColorPreview" Grid.Column="1"
@@ -1373,6 +1381,16 @@
                                                 BorderThickness="1" CornerRadius="3"/>
                                         <Button Grid.Row="5" Grid.Column="2" Content="変更" Margin="0,4"
                                                 Tag="TalkChatTextColor" Click="ColorButton_Click"/>
+
+                                        <TextBlock Grid.Row="6" Text="アラーム"/>
+                                        <Border x:Name="AppearanceFieldBossAlarmTextColorPreview"
+                                                Grid.Row="6" Grid.Column="1"
+                                                Width="34" Height="22"
+                                                BorderBrush="{DynamicResource SettingsBorderBrush}"
+                                                BorderThickness="1" CornerRadius="3"/>
+                                        <Button Grid.Row="6" Grid.Column="2" Content="変更" Margin="0,4"
+                                                Tag="FieldBossAlarmTextColor"
+                                                Click="ColorButton_Click"/>
                                     </Grid>
                                 </StackPanel>
                             </Border>
@@ -1389,6 +1407,7 @@
                                             <ColumnDefinition Width="86"/>
                                         </Grid.ColumnDefinitions>
                                         <Grid.RowDefinitions>
+                                            <RowDefinition Height="44"/>
                                             <RowDefinition Height="44"/>
                                             <RowDefinition Height="44"/>
                                             <RowDefinition Height="44"/>
@@ -1432,6 +1451,16 @@
                                                 BorderThickness="1" CornerRadius="3"/>
                                         <Button Grid.Row="3" Grid.Column="2" Content="変更" Margin="0,4"
                                                 Tag="MenuBackgroundColor" Click="ColorButton_Click"/>
+
+                                        <TextBlock Grid.Row="4" Text="アラームハイライト色"/>
+                                        <Border x:Name="AppearanceFieldBossAlarmHighlightColorPreview"
+                                                Grid.Row="4" Grid.Column="1"
+                                                Width="34" Height="22"
+                                                BorderBrush="{DynamicResource SettingsBorderBrush}"
+                                                BorderThickness="1" CornerRadius="3"/>
+                                        <Button Grid.Row="4" Grid.Column="2" Content="変更" Margin="0,4"
+                                                Tag="FieldBossAlarmHighlightColor"
+                                                Click="ColorButton_Click"/>
                                     </Grid>
                                 </StackPanel>
                             </Border>
@@ -1841,6 +1870,73 @@
                                         </Grid>
                                     </Border>
 
+                                    <Border Margin="0,12,0,0"
+                                            Padding="12"
+                                            Background="{DynamicResource SettingsInputBrush}"
+                                            BorderBrush="{DynamicResource SettingsBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="4">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Text="フィールドボスアラーム切替"
+                                                       FontWeight="SemiBold"/>
+                                            <StackPanel Grid.Row="1"
+                                                        Orientation="Horizontal"
+                                                        Margin="0,6,0,0">
+                                                <CheckBox x:Name="FieldBossAlarmHotkeyControlCheckBox"
+                                                          Content="Ctrl"
+                                                          Tag="FieldBossAlarmToggle"
+                                                          Checked="HotkeyModifierCheckBox_Changed"
+                                                          Unchecked="HotkeyModifierCheckBox_Changed"/>
+                                                <CheckBox x:Name="FieldBossAlarmHotkeyShiftCheckBox"
+                                                          Content="Shift"
+                                                          Tag="FieldBossAlarmToggle"
+                                                          Margin="14,6,0,6"
+                                                          Checked="HotkeyModifierCheckBox_Changed"
+                                                          Unchecked="HotkeyModifierCheckBox_Changed"/>
+                                                <CheckBox x:Name="FieldBossAlarmHotkeyAltCheckBox"
+                                                          Content="Alt"
+                                                          Tag="FieldBossAlarmToggle"
+                                                          Margin="14,6,0,6"
+                                                          Checked="HotkeyModifierCheckBox_Changed"
+                                                          Unchecked="HotkeyModifierCheckBox_Changed"/>
+                                            </StackPanel>
+                                            <Grid Grid.Row="2" Margin="0,4,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox x:Name="FieldBossAlarmHotkeyKeyTextBox"
+                                                         Tag="FieldBossAlarmToggle"
+                                                         IsReadOnly="True"
+                                                         Focusable="True"
+                                                         Cursor="Hand"
+                                                         HorizontalContentAlignment="Center"
+                                                         InputMethod.IsInputMethodEnabled="False"
+                                                         PreviewMouseLeftButtonDown="HotkeyKeyTextBox_PreviewMouseLeftButtonDown"
+                                                         PreviewMouseRightButtonDown="HotkeyKeyTextBox_PreviewMouseRightButtonDown"
+                                                         PreviewKeyDown="HotkeyKeyTextBox_PreviewKeyDown"
+                                                         LostKeyboardFocus="HotkeyKeyTextBox_LostKeyboardFocus"/>
+                                                <Button Grid.Column="1"
+                                                        Content="クリア"
+                                                        Tag="FieldBossAlarmToggle"
+                                                        Margin="8,0,0,0"
+                                                        Click="ClearHotkeyButton_Click"/>
+                                            </Grid>
+                                            <TextBlock x:Name="FieldBossAlarmHotkeyStatusText"
+                                                       Grid.Row="3"
+                                                       Margin="0,7,0,0"
+                                                       Foreground="#FFFF7777"
+                                                       TextWrapping="Wrap"
+                                                       Visibility="Collapsed"/>
+                                        </Grid>
+                                    </Border>
+
                                     <TextBlock
                                         Text="主キー欄の右クリックまたはクリアボタンで解除できます。クリック透過切替は必須です。"
                                         Style="{StaticResource DescriptionStyle}"
@@ -2008,6 +2104,112 @@
                                             HorizontalAlignment="Left"
                                             Margin="0,10,0,0"
                                             Click="TestMentionSoundButton_Click"/>
+                                </StackPanel>
+                            </Border>
+
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid x:Name="ChatNotificationSettingsPanel"
+                          Margin="0,0,0,14"
+                          Visibility="Collapsed">
+                        <StackPanel Margin="0,0,8,0">
+                            <Border x:Name="FieldBossAlarmSection"
+                                    Style="{StaticResource CardStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="アラーム"
+                                               Style="{StaticResource GroupTitleStyle}"/>
+                                    <TextBlock
+                                        Text="30分間隔のPOP時刻をチャット欄へ通知します。通知はチャットのフィルターやキーワードハイライトの影響を受けません。"
+                                        Style="{StaticResource DescriptionStyle}"
+                                        TextWrapping="Wrap"/>
+                                    <CheckBox
+                                        Content="Overlayにアラームボタンを表示する"
+                                        Margin="0,10,0,0"
+                                        IsChecked="{Binding IsChecked,
+                                            ElementName=ShowFieldBossAlarmButtonCheckBox,
+                                            Mode=TwoWay}"/>
+                                    <Grid Margin="0,14,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="160"/>
+                                            <ColumnDefinition Width="54"/>
+                                            <ColumnDefinition Width="86"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="通知文字色"/>
+                                        <Border x:Name="FieldBossAlarmTextColorPreview"
+                                                Grid.Column="1"
+                                                Width="34" Height="22"
+                                                BorderBrush="{DynamicResource SettingsBorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="3"/>
+                                        <Button Grid.Column="2"
+                                                Content="変更"
+                                                Tag="FieldBossAlarmTextColor"
+                                                Click="ColorButton_Click"/>
+                                    </Grid>
+                                    <Grid Margin="0,10,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="160"/>
+                                            <ColumnDefinition Width="54"/>
+                                            <ColumnDefinition Width="86"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="ハイライト背景色"/>
+                                        <Border x:Name="FieldBossAlarmHighlightColorPreview"
+                                                Grid.Column="1"
+                                                Width="34" Height="22"
+                                                BorderBrush="{DynamicResource SettingsBorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="3"/>
+                                        <Button Grid.Column="2"
+                                                Content="変更"
+                                                Tag="FieldBossAlarmHighlightColor"
+                                                Click="ColorButton_Click"/>
+                                    </Grid>
+                                    <Grid Margin="0,16,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="160"/>
+                                            <ColumnDefinition Width="180"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="事前通知"
+                                                   VerticalAlignment="Center"/>
+                                        <ComboBox x:Name="FieldBossAlarmAdvanceComboBox"
+                                                  Grid.Column="1">
+                                            <ComboBoxItem Content="10分前" Tag="10"/>
+                                            <ComboBoxItem Content="5分前" Tag="5"/>
+                                            <ComboBoxItem Content="3分前" Tag="3"/>
+                                            <ComboBoxItem Content="なし" Tag="0"/>
+                                        </ComboBox>
+                                    </Grid>
+                                    <CheckBox x:Name="EnableFieldBossAlarmSoundCheckBox"
+                                              Content="通知音を鳴らす"
+                                              Margin="0,18,0,6"/>
+                                    <TextBlock Text="通知音ファイル"
+                                               Margin="0,10,0,7"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="FieldBossAlarmSoundFilePathTextBox"
+                                                 IsReadOnly="True"/>
+                                        <Button Grid.Column="1"
+                                                Content="参照"
+                                                Margin="8,0,0,0"
+                                                Click="BrowseFieldBossAlarmSoundButton_Click"/>
+                                        <Button Grid.Column="2"
+                                                Content="クリア"
+                                                Margin="6,0,0,0"
+                                                Click="ClearFieldBossAlarmSoundButton_Click"/>
+                                    </Grid>
+                                    <Button Content="テスト再生"
+                                            HorizontalAlignment="Left"
+                                            Margin="0,10,0,0"
+                                            Click="TestFieldBossAlarmSoundButton_Click"/>
+                                    <Button Content="ホットキー設定を開く"
+                                            HorizontalAlignment="Left"
+                                            Margin="0,12,0,0"
+                                            Click="OpenHotkeySettingsButton_Click"/>
                                 </StackPanel>
                             </Border>
 

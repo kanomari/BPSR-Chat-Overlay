@@ -56,6 +56,7 @@ public partial class MainWindow : Window
     private readonly List<ChatMessage> _chatHistory = [];
     private readonly HashSet<int> _reportedUnknownChannelTypes = [];
     private readonly NotificationSoundPlayer _notificationSoundPlayer = new();
+    private readonly FieldBossAlarmSchedule _fieldBossAlarm = new();
     private readonly CancellationTokenSource _updateCheckCancellation = new();
     private readonly DispatcherTimer _statusTimer;
     private readonly DispatcherTimer _windowPlacementSaveTimer;
@@ -87,6 +88,7 @@ public partial class MainWindow : Window
     private double _expandedMinHeight;
     private string _activeCollapseSide = AppConfig.CollapseSideRight;
     private int _shutdownStarted;
+    private bool _fieldBossAdvanceNotificationHandled;
 
     public ObservableCollection<ChatMessage> ChatMessages { get; } = new();
 
@@ -153,6 +155,7 @@ public partial class MainWindow : Window
         };
 
         _statusTimer.Tick += UpdateCaptureStatus;
+        _statusTimer.Tick += CheckFieldBossAlarm;
         _statusTimer.Start();
     }
 
@@ -489,7 +492,9 @@ public partial class MainWindow : Window
             config.ChatBackgroundColor,
             config.MenuBackgroundColor,
             config.MentionHighlightColor,
-            config.TalkHighlightBackgroundColor);
+            config.TalkHighlightBackgroundColor,
+            config.FieldBossAlarmTextColor,
+            config.FieldBossAlarmHighlightColor);
         ChatListBox.FontFamily = ChatFontCatalog.Resolve(
             config.ChatFontFamily);
         ChatListBox.FontSize = Math.Clamp(config.FontSize, 8, 48);
@@ -545,6 +550,9 @@ public partial class MainWindow : Window
             config.ShowMentionHighlightToggle
                 ? Visibility.Visible
                 : Visibility.Collapsed;
+        FieldBossAlarmButton.Visibility = config.ShowFieldBossAlarmButton
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         FeatureTogglePanel.Visibility =
             config.ShowChatFilterToggle ||
             config.ShowMentionHighlightToggle
@@ -553,6 +561,15 @@ public partial class MainWindow : Window
         UpdateChatToggleButtonStates();
         UpdateFeatureToggleButtonStates();
         UpdateCollapseButtonAppearance(config.CollapseSide);
+        if (!_fieldBossAdvanceNotificationHandled &&
+            _fieldBossAlarm.TargetTime is { } alarmTarget &&
+            (config.FieldBossAlarmAdvanceMinutes == 0 ||
+             DateTime.Now >= alarmTarget.AddMinutes(
+                 -config.FieldBossAlarmAdvanceMinutes)))
+        {
+            _fieldBossAdvanceNotificationHandled = true;
+        }
+        UpdateFieldBossAlarmButton();
         Topmost = config.TopMost;
         _buildStatusWindow?.ApplySettings(config);
         _buildStatusWindow?.SetDisplayed(config.ShowBuildStatusWindow);
@@ -1864,6 +1881,10 @@ public partial class MainWindow : Window
             {
                 ToggleCollapse();
             }
+            else if (hotkeyAction == HotkeyAction.FieldBossAlarmToggle)
+            {
+                AdvanceFieldBossAlarm();
+            }
 
             handled = true;
         }
@@ -2218,47 +2239,21 @@ public partial class MainWindow : Window
                         }
                     }
 
-                    bool shouldFollowLatest = _isFollowingLatest;
-                    PrepareScrollAnchorForHistoryTrim();
-                    AddToChatHistory(message);
-
                     bool shouldDisplay = isTalk
                         ? _appConfig.ShowTalkChat
                         : ShouldDisplayChatMessage(message);
+                    AppendMessage(
+                        message,
+                        shouldDisplay,
+                        animateNewChat: !isTalk);
 
-                    if (shouldDisplay)
+                    if (shouldDisplay && isTalk && message.IsTalkHighlighted)
                     {
-                        ChatMessages.Add(message);
+                        BeginTalkHighlight(message);
                     }
-
-                    QueuePendingScrollAnchorRestore();
-
-                    ChatCountText.Text =
-                        $"受信件数: {_chatHistory.Count:N0}";
-
-                    if (shouldDisplay)
-                    {
-                        if (shouldFollowLatest)
-                        {
-                            _hasNewMessagesWhilePaused = false;
-                            QueueScrollToLatest();
-                        }
-                        else
-                        {
-                            _hasNewMessagesWhilePaused = true;
-                            UpdateLatestMessageButtonVisibility();
-                        }
-
-                        if (isTalk && message.IsTalkHighlighted)
-                        {
-                            BeginTalkHighlight(message);
-                        }
-                        else if (!isTalk)
-                        {
-                            BeginNewChatHighlight(message);
-                        }
-                    }
-                    else if (isTalk && message.IsTalkHighlighted)
+                    else if (!shouldDisplay &&
+                             isTalk &&
+                             message.IsTalkHighlighted)
                     {
                         // 非表示中も履歴上の点灯状態は保持します。
                         message.IsTalkHighlightVisible = true;
@@ -2376,6 +2371,11 @@ public partial class MainWindow : Window
 
     private bool ShouldDisplayChatMessage(ChatMessage message)
     {
+        if (message.NotificationType != InAppNotificationType.None)
+        {
+            return true;
+        }
+
         bool matchesChannelFilter = message.ChannelType switch
         {
             (int)Zproto.ChitChatChannelType.ChannelWorld =>
@@ -2444,6 +2444,45 @@ public partial class MainWindow : Window
             messageText.Contains(keyword, StringComparison.OrdinalIgnoreCase));
     }
 
+    private void AppendMessage(
+        ChatMessage message,
+        bool shouldDisplay = true,
+        bool animateNewChat = false)
+    {
+        bool shouldFollowLatest = _isFollowingLatest;
+        PrepareScrollAnchorForHistoryTrim();
+        AddToChatHistory(message);
+
+        if (shouldDisplay)
+        {
+            ChatMessages.Add(message);
+        }
+
+        QueuePendingScrollAnchorRestore();
+        ChatCountText.Text = $"受信件数: {_chatHistory.Count:N0}";
+
+        if (!shouldDisplay)
+        {
+            return;
+        }
+
+        if (shouldFollowLatest)
+        {
+            _hasNewMessagesWhilePaused = false;
+            QueueScrollToLatest();
+        }
+        else
+        {
+            _hasNewMessagesWhilePaused = true;
+            UpdateLatestMessageButtonVisibility();
+        }
+
+        if (animateNewChat)
+        {
+            BeginNewChatHighlight(message);
+        }
+    }
+
     private bool MatchesHiddenChatKeywords(ChatMessage message)
     {
         if (message.ChannelType ==
@@ -2470,7 +2509,8 @@ public partial class MainWindow : Window
 
     private bool IsMentionMessage(ChatMessage message)
     {
-        if (message.ChannelType ==
+        if (message.NotificationType != InAppNotificationType.None ||
+            message.ChannelType ==
                 (int)Zproto.ChitChatChannelType.ChannelPrivate ||
             MatchesHiddenChatKeywords(message) ||
             !_appConfig.EnableMentionNotification ||
@@ -2530,6 +2570,99 @@ public partial class MainWindow : Window
 
         QueueScrollToLatest();
         UpdateLatestMessageButtonVisibility();
+    }
+
+    private void FieldBossAlarmButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        AdvanceFieldBossAlarm();
+    }
+
+    private void AdvanceFieldBossAlarm()
+    {
+        DateTime now = DateTime.Now;
+        _fieldBossAlarm.Advance(now);
+        _fieldBossAdvanceNotificationHandled =
+            _fieldBossAlarm.TargetTime is not { } target ||
+            _appConfig.FieldBossAlarmAdvanceMinutes == 0 ||
+            now >= target.AddMinutes(
+                -_appConfig.FieldBossAlarmAdvanceMinutes);
+        UpdateFieldBossAlarmButton();
+    }
+
+    private void UpdateFieldBossAlarmButton()
+    {
+        FieldBossAlarmButton.IsChecked =
+            _fieldBossAlarm.TargetTime is not null;
+        FieldBossAlarmButton.Content = _fieldBossAlarm.TargetTime is { } target
+            ? $"🔔{target:HH:mm}"
+            : "🔔";
+        FieldBossAlarmButton.Width =
+            _fieldBossAlarm.TargetTime is null ? 28 : 68;
+        FieldBossAlarmButton.ToolTip = _fieldBossAlarm.TargetTime is { } time
+            ? $"フィールドボスアラーム（{time:HH:mm}）"
+            : "フィールドボスアラーム（OFF）";
+    }
+
+    private void CheckFieldBossAlarm(object? sender, EventArgs e)
+    {
+        if (_fieldBossAlarm.TargetTime is not { } target)
+        {
+            return;
+        }
+
+        DateTime now = DateTime.Now;
+        if (now >= target)
+        {
+            if (now - target < TimeSpan.FromMinutes(1))
+            {
+                AddInAppNotification(
+                    InAppNotificationType.FieldBossAlarm,
+                    $"フィールドボス出現時刻です（{target:HH:mm}）",
+                    _appConfig.EnableFieldBossAlarmSound,
+                    _appConfig.FieldBossAlarmSoundFilePath);
+            }
+
+            _fieldBossAlarm.Clear();
+            _fieldBossAdvanceNotificationHandled = false;
+            UpdateFieldBossAlarmButton();
+            return;
+        }
+
+        int advanceMinutes = _appConfig.FieldBossAlarmAdvanceMinutes;
+        if (!_fieldBossAdvanceNotificationHandled &&
+            advanceMinutes > 0 &&
+            now >= target.AddMinutes(-advanceMinutes))
+        {
+            _fieldBossAdvanceNotificationHandled = true;
+            AddInAppNotification(
+                InAppNotificationType.FieldBossAlarm,
+                $"フィールドボス出現まであと{advanceMinutes}分です（{target:HH:mm}）",
+                _appConfig.EnableFieldBossAlarmSound,
+                _appConfig.FieldBossAlarmSoundFilePath);
+        }
+    }
+
+    private void AddInAppNotification(
+        InAppNotificationType notificationType,
+        string text,
+        bool playSound,
+        string? soundFilePath)
+    {
+        var message = new ChatMessage
+        {
+            Message = text,
+            Timestamp = DateTime.Now,
+            NotificationType = notificationType
+        };
+
+        if (playSound)
+        {
+            _notificationSoundPlayer.Play(soundFilePath);
+        }
+
+        AppendMessage(message);
     }
 
     private void UpdateCaptureStatus(object? sender, EventArgs e)

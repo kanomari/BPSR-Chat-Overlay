@@ -17,6 +17,8 @@ public static class ChatColors
     public const string DefaultMentionHighlightColor = "#60FFD54F";
     public const string DefaultChatTextShadowColor = "#FF203040";
     public const string DefaultTalkHighlightColor = "#704B9CD3";
+    public const string DefaultFieldBossAlarmTextColor = "#FFFFD54F";
+    public const string DefaultFieldBossAlarmHighlightColor = "#704B3A00";
 
     public static Brush World { get; private set; } =
         CreateBrush(
@@ -70,6 +72,16 @@ public static class ChatColors
             DefaultTalkHighlightColor,
             DefaultTalkHighlightColor);
 
+    public static Brush FieldBossAlarmText { get; private set; } =
+        CreateBrush(
+            DefaultFieldBossAlarmTextColor,
+            DefaultFieldBossAlarmTextColor);
+
+    public static Brush FieldBossAlarmHighlight { get; private set; } =
+        CreateBrush(
+            DefaultFieldBossAlarmHighlightColor,
+            DefaultFieldBossAlarmHighlightColor);
+
     public static void Apply(
         string? worldTextColor,
         string? channelTextColor,
@@ -80,7 +92,9 @@ public static class ChatColors
         string? chatBackgroundColor,
         string? menuBackgroundColor,
         string? mentionHighlightColor,
-        string? talkHighlightBackgroundColor)
+        string? talkHighlightBackgroundColor,
+        string? fieldBossAlarmTextColor,
+        string? fieldBossAlarmHighlightColor)
     {
         World = CreateBrush(
             worldTextColor,
@@ -115,6 +129,12 @@ public static class ChatColors
         TalkHighlightDim = CreateDimmedBrush(
             talkHighlightBackgroundColor,
             DefaultTalkHighlightColor);
+        FieldBossAlarmText = CreateBrush(
+            fieldBossAlarmTextColor,
+            DefaultFieldBossAlarmTextColor);
+        FieldBossAlarmHighlight = CreateBrush(
+            fieldBossAlarmHighlightColor,
+            DefaultFieldBossAlarmHighlightColor);
     }
 
     public static SolidColorBrush CreateBrush(

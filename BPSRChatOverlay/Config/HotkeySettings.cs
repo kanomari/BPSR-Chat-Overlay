@@ -8,12 +8,16 @@ public sealed class HotkeySettings
     public HotkeyGestureConfig CollapseToggle { get; set; } =
         HotkeyGestureConfig.CreateDefaultCollapse();
 
+    public HotkeyGestureConfig FieldBossAlarmToggle { get; set; } =
+        HotkeyGestureConfig.CreateUnset();
+
     public HotkeySettings Clone()
     {
         return new HotkeySettings
         {
             ClickThroughToggle = ClickThroughToggle.Clone(),
-            CollapseToggle = CollapseToggle.Clone()
+            CollapseToggle = CollapseToggle.Clone(),
+            FieldBossAlarmToggle = FieldBossAlarmToggle.Clone()
         };
     }
 }

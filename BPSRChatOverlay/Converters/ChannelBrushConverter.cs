@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows.Data;
 using BPSRChatOverlay.UIResources;
+using BPSRChatOverlay.Models;
 
 namespace BPSRChatOverlay.Converters;
 
@@ -16,7 +17,20 @@ public sealed class ChannelBrushConverter : IValueConverter
             parameter is string text &&
             text == "ChatText";
 
-        if (value is not int channelType)
+        if (value is ChatMessage message &&
+            message.NotificationType == InAppNotificationType.FieldBossAlarm)
+        {
+            return ChatColors.FieldBossAlarmText;
+        }
+
+        int? resolvedChannelType = value switch
+        {
+            int channel => channel,
+            ChatMessage chatMessage => chatMessage.ChannelType,
+            _ => null
+        };
+
+        if (resolvedChannelType is not { } channelType)
         {
             return useConfiguredChatTextColor
                 ? ChatColors.Unknown

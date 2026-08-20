@@ -68,6 +68,8 @@ public sealed class AppConfig
 
     public bool ShowMentionHighlightToggle { get; set; } = true;
 
+    public bool ShowFieldBossAlarmButton { get; set; } = true;
+
     public bool ShowCollapseButton { get; set; } = true;
 
     public bool ShowChatSeparators { get; set; } = true;
@@ -157,6 +159,16 @@ public sealed class AppConfig
     public bool EnableTalkSound { get; set; } = true;
 
     public string TalkSoundFilePath { get; set; } = string.Empty;
+
+    public string FieldBossAlarmTextColor { get; set; } = "#FFFFD54F";
+
+    public string FieldBossAlarmHighlightColor { get; set; } = "#704B3A00";
+
+    public bool EnableFieldBossAlarmSound { get; set; } = true;
+
+    public string FieldBossAlarmSoundFilePath { get; set; } = string.Empty;
+
+    public int FieldBossAlarmAdvanceMinutes { get; set; } = 5;
 
     public bool ShowDebugPanel { get; set; } = false;
 
