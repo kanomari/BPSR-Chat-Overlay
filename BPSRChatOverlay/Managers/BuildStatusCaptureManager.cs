@@ -46,14 +46,14 @@ public sealed class BuildStatusCaptureManager
     private static readonly IReadOnlyDictionary<int, string> CultivateNames =
         new Dictionary<int, string>
         {
-            [1] = "イマジンインパクト",
-            [2] = "幻夢の断罪",
-            [3] = "夢幻の矢",
-            [4] = "夢幻迷界",
-            [5] = "夢幻の力",
-            [6] = "寂滅の夢",
-            [7] = "虚妄断罪",
-            [8] = "無限思考"
+            [9] = "幻滅の崩界",
+            [10] = "累功の刻傷",
+            [11] = "イマジン具現",
+            [12] = "戦意激動",
+            [13] = "激励聖歌",
+            [14] = "累勢ブラスト",
+            [15] = "ステータスハーモニー",
+            [16] = "夢幻アローレイン"
         };
 
     private static readonly IReadOnlyDictionary<int, int> KnownBranchNodes =
@@ -137,6 +137,8 @@ public sealed class BuildStatusCaptureManager
             int? cultivateAreaId = null;
             bool cultivateKnown = false;
             int seasonId = data.SeasonCenter?.SeasonId ?? 0;
+            int[] activeAreaIds = [];
+            bool cultivateDataFound = false;
             if (seasonId != 0 &&
                 data.SeasonCultivateLineData?.SeasonCultivateLineMap.TryGetValue(
                     seasonId,
@@ -145,14 +147,36 @@ public sealed class BuildStatusCaptureManager
                     StandardCultivateSubTypeId,
                     out CultivateLineSubTypeData? standard) == true)
             {
-                cultivateKnown = true;
-                cultivateAreaId = standard.CultivateLineAreaList
-                    .FirstOrDefault(id => id is >= 1 and <= 8);
-                if (cultivateAreaId == 0)
+                cultivateDataFound = true;
+                activeAreaIds = [.. standard.CultivateLineAreaList];
+                int supportedAreaId = activeAreaIds
+                    .FirstOrDefault(CultivateNames.ContainsKey);
+                if (supportedAreaId != 0)
                 {
-                    cultivateAreaId = null;
+                    cultivateKnown = true;
+                    cultivateAreaId = supportedAreaId;
+                }
+                else if (activeAreaIds.Length == 0)
+                {
+                    cultivateKnown = true;
+                }
+                else
+                {
+                    Log.Warning(
+                        "Unsupported cultivate area IDs received in initial snapshot: SeasonId={SeasonId}, SubTypeId={SubTypeId}, ActiveAreaIds=[{ActiveAreaIds}]",
+                        seasonId,
+                        StandardCultivateSubTypeId,
+                        string.Join(", ", activeAreaIds));
                 }
             }
+
+            Log.Information(
+                "Initial cultivate status received: SeasonId={SeasonId}, SubTypeId={SubTypeId}, DataFound={DataFound}, ActiveAreaIds=[{ActiveAreaIds}], SelectedAreaId={SelectedAreaId}",
+                seasonId,
+                StandardCultivateSubTypeId,
+                cultivateDataFound,
+                string.Join(", ", activeAreaIds),
+                cultivateAreaId);
 
             UpdateState(
                 professionId,
@@ -250,18 +274,34 @@ public sealed class BuildStatusCaptureManager
                 case EnableCultivateLineMethodId:
                     World.Types.EnableCultivateLine enable =
                         World.Types.EnableCultivateLine.Parser.ParseFrom(payload);
-                    if (enable.VRequest?.ZoneId is >= 1 and <= 8)
+                    if (enable.VRequest is { } enableRequest &&
+                        CultivateNames.ContainsKey(enableRequest.ZoneId))
                     {
-                        UpdateCultivate(enable.VRequest.ZoneId);
+                        UpdateCultivate(enableRequest.ZoneId);
+                    }
+                    else if (enable.VRequest is { } unsupportedEnableRequest)
+                    {
+                        Log.Warning(
+                            "Unsupported cultivate ZoneId received: MethodId={MethodId}, ZoneId={ZoneId}",
+                            EnableCultivateLineMethodId,
+                            unsupportedEnableRequest.ZoneId);
                     }
                     break;
 
                 case DisableCultivateLineMethodId:
                     World.Types.DisableCultivateLine disable =
                         World.Types.DisableCultivateLine.Parser.ParseFrom(payload);
-                    if (disable.VRequest?.ZoneId is >= 1 and <= 8)
+                    if (disable.VRequest is { } disableRequest &&
+                        CultivateNames.ContainsKey(disableRequest.ZoneId))
                     {
                         UpdateCultivate(null);
+                    }
+                    else if (disable.VRequest is { } unsupportedDisableRequest)
+                    {
+                        Log.Warning(
+                            "Unsupported cultivate ZoneId received: MethodId={MethodId}, ZoneId={ZoneId}",
+                            DisableCultivateLineMethodId,
+                            unsupportedDisableRequest.ZoneId);
                     }
                     break;
             }

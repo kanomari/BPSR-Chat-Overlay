@@ -384,7 +384,7 @@ public static class ConfigManager
             .Where(registration =>
                 registration is not null &&
                 registration.TalentId > 0 &&
-                registration.CultivateAreaId is >= 1 and <= 8)
+                registration.CultivateAreaId is >= 9 and <= 16)
             .GroupBy(registration =>
                 (registration.TalentId, registration.CultivateAreaId))
             .Select(group => group.First())
